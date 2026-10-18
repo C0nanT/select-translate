@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""Tradutor de selecao: selecione texto em qualquer app -> popup com traducao pt-BR.
+
+Uso: python3 tradutor.py   (Ctrl+C no terminal para parar)
+"""
+import json
+import threading
+import urllib.parse
+import urllib.request
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk, Pango
+
+DEBOUNCE_MS = 500      # espera selecao "assentar" (arrastar mouse gera varios eventos)
+HIDE_AFTER_S = 15      # popup some sozinho
+MAX_CHARS = 3000
+POPUP_CHARS = 80       # largura maxima do popup, em caracteres
+CLICK_HIDE_MS = 0      # apos clicar na tela, popup some nesse tempo
+BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
+           | Gdk.ModifierType.BUTTON3_MASK)
+
+
+def translate(text, target="pt"):
+    url = "https://translate.googleapis.com/translate_a/single?" + urllib.parse.urlencode(
+        {"client": "gtx", "sl": "auto", "tl": target, "dt": "t", "q": text}
+    )
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        data = json.loads(r.read().decode("utf-8"))
+    return "".join(part[0] for part in data[0] if part[0])
+
+
+class Popup(Gtk.Window):
+    def __init__(self):
+        super().__init__(type=Gtk.WindowType.POPUP)
+        self.set_accept_focus(False)
+        self.set_keep_above(True)
+        self.set_type_hint(Gdk.WindowTypeHint.TOOLTIP)
+
+        frame = Gtk.EventBox()
+        frame.connect("button-press-event", lambda *_: self.hide())
+        css = Gtk.CssProvider()
+        css.load_from_data(b"""
+            .tp { background: #1e1e2e; border: 1px solid #89b4fa; border-radius: 6px; }
+            .tp label { color: #cdd6f4; font-size: 13pt; }
+            .tp .orig { color: #7f849c; font-size: 10pt; }
+            .tp.error { border-color: #f38ba8; }
+            .tp.error label { color: #f38ba8; }
+            .tp.error .orig { color: #7f849c; }
+            .tp.loading label { color: #a6adc8; font-style: italic; }
+            .tp.loading .orig { color: #7f849c; font-style: normal; }
+        """)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        frame.get_style_context().add_class("tp")
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.set_margin_top(10); box.set_margin_bottom(10)
+        box.set_margin_start(12); box.set_margin_end(12)
+        self.orig = Gtk.Label(xalign=0)
+        self.orig.get_style_context().add_class("orig")
+        self.trad = Gtk.Label(xalign=0)
+        for lbl in (self.orig, self.trad):
+            lbl.set_line_wrap(True)
+            lbl.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            box.pack_start(lbl, False, False, 0)
+        self.orig.set_ellipsize(Pango.EllipsizeMode.END)
+        self.orig.set_lines(2)
+        frame.add(box)
+        self.add(frame)
+        self._hide_id = None
+
+    def show_text(self, original, translated, state=None):
+        """state: None (traducao), "loading" ou "error" -> classe CSS."""
+        self.orig.set_text(original)
+        self.trad.set_text(translated)
+        ctx = self.get_child().get_style_context()
+        for cls in ("loading", "error"):
+            (ctx.add_class if cls == state else ctx.remove_class)(cls)
+        # label com wrap pede largura minima -> popup fino e alto; forca largura
+        width = max(20, min(len(translated), POPUP_CHARS))
+        for lbl in (self.orig, self.trad):
+            lbl.set_width_chars(width)
+            lbl.set_max_width_chars(width)
+        self.resize(1, 1)
+        self.get_child().show_all()  # filhos visiveis -> medida de tamanho correta
+
+        # posiciona perto do mouse, sem sair da tela
+        _, x, y, _ = self._pointer()
+        mon = Gdk.Display.get_default().get_monitor_at_point(x, y).get_geometry()
+        _, nat = self.get_preferred_size()
+        w, h = nat.width, nat.height
+        right = mon.x + mon.width
+        # nao cabe a direita -> abre para a esquerda do mouse
+        x = x + 15 if x + 15 + w <= right - 5 else x - w - 15
+        x = min(max(x, mon.x + 5), right - w - 5)
+        y = y + 20 if y + 20 + h < mon.y + mon.height else max(mon.y, y - h - 20)
+        self.move(x, y)
+        self.show()
+
+        self._cancel_timers()
+        self._hide_id = GLib.timeout_add_seconds(HIDE_AFTER_S, self._auto_hide)
+        self._was_pressed = self._pointer()[3] & BUTTONS
+        self._poll_id = GLib.timeout_add(100, self._watch_click)
+
+    def _pointer(self):
+        dev = Gdk.Display.get_default().get_default_seat().get_pointer()
+        return Gdk.get_default_root_window().get_device_position(dev)
+
+    def _watch_click(self):
+        # clique em qualquer lugar da tela -> some apos CLICK_HIDE_MS
+        pressed = self._pointer()[3] & BUTTONS
+        if pressed and not self._was_pressed:
+            self._cancel_timers()
+            self._hide_id = GLib.timeout_add(CLICK_HIDE_MS, self._auto_hide)
+            return False
+        self._was_pressed = pressed
+        return True
+
+    def _cancel_timers(self):
+        for attr in ("_hide_id", "_poll_id"):
+            src = getattr(self, attr, None)
+            if src:
+                GLib.source_remove(src)
+            setattr(self, attr, None)
+
+    def _auto_hide(self):
+        self._hide_id = None
+        self._cancel_timers()
+        self.hide()
+        return False
+
+
+class App:
+    def __init__(self):
+        self.popup = Popup()
+        self.last = ""
+        self.pending = None
+        self.cb = Gtk.Clipboard.get(Gdk.SELECTION_PRIMARY)
+        self.cb.connect("owner-change", self.on_change)
+
+    def on_change(self, *_):
+        if self.pending:
+            GLib.source_remove(self.pending)
+        self.pending = GLib.timeout_add(DEBOUNCE_MS, self.read_selection)
+
+    def read_selection(self):
+        self.pending = None
+        self.cb.request_text(self.on_text)
+        return False
+
+    def on_text(self, _cb, text):
+        if not text:
+            return
+        text = " ".join(text.split())  # junta quebras de linha do PDF
+        if text == self.last or len(text) > MAX_CHARS or not any(c.isalpha() for c in text):
+            return
+        self.last = text
+        self.popup.show_text(text, "⏳ Traduzindo…", state="loading")
+        threading.Thread(target=self.worker, args=(text,), daemon=True).start()
+
+    def worker(self, text):
+        try:
+            result, error = translate(text), False
+        except Exception as e:
+            result, error = f"Falha na requisição de tradução: {e}", True
+        GLib.idle_add(self.done, text, result, error)
+
+    def done(self, text, result, error):
+        # usuario clicou (fechou) durante carregamento, ou ja selecionou outra coisa
+        if not self.popup.get_visible() or text != self.last:
+            if error and text == self.last:
+                self.last = ""
+            return
+        if error:
+            self.last = ""  # permite tentar de novo com a mesma selecao
+            self.popup.show_text(text, "⚠ " + result, state="error")
+        else:
+            self.popup.show_text(text, result)
+
+
+if __name__ == "__main__":
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    App()
+    print("Tradutor ativo. Selecione texto. Ctrl+C para sair.")
+    Gtk.main()
