@@ -40,7 +40,12 @@ Constantes no topo do `tradutor.py`:
 
 ## Android (tablet)
 
-App em `android/` que adiciona **"Traduzir pt-BR"** ao menu da seleção de texto. Tocar no item abre um popup embaixo da tela, por cima do app.
+App em `android/` com duas formas de traduzir; as duas abrem o mesmo popup embaixo da tela, por cima do app:
+
+- **Bolha flutuante** (funciona em qualquer leitor, inclusive o visualizador de PDF do Files by Google): copie o texto e toque na bolha **文**.
+- **Item "Traduzir pt-BR"** no menu da seleção, nos apps que mostram itens de outros apps nesse menu.
+
+Testado num Lenovo TB336FU com Android 16, lendo PDF no Files by Google.
 
 **Requisitos**
 
@@ -55,16 +60,24 @@ make android-apk  # só gera o APK
 
 O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`. Para instalar à mão, copie o arquivo para o tablet, abra-o no gerenciador de arquivos e permita instalar de fonte desconhecida.
 
+**Bolha**
+
+- Ligar: toque no ícone **Tradutor** na lista de apps. Na primeira vez ele abre a tela de "Sobrepor a outros apps": ative para o Tradutor e toque no ícone de novo
+- Desligar: toque na notificação "Bolha do Tradutor ligada"
+- Arraste a bolha para mudar de lugar
+- Ao reiniciar o tablet, a bolha não volta sozinha: toque no ícone de novo
+- O Android avisa "Tradutor colou da área de transferência" a cada tradução; é esperado
+
 **Uso**
 
-- Selecione o texto -> toque em "Traduzir pt-BR" no menu -> aparece "Traduzindo…" e depois a tradução
+- Copie o texto e toque na bolha (ou selecione e toque em "Traduzir pt-BR" no menu) -> aparece "Traduzindo…" e depois a tradução
 - Some sozinho em 15 s; a barra embaixo mostra o tempo restante
 - Segurar o dedo sobre o popup pausa o tempo
 - Toque fora -> o popup fecha
 - Falha na requisição -> popup vermelho com o motivo
 - Texto acima de 3000 caracteres -> aviso "Texto grande demais (N caracteres)"
 
-**Leitores de PDF (risco em aberto, ainda não testado no tablet):** alguns leitores podem ter menu de seleção próprio e esconder itens de outros apps, e aí "Traduzir pt-BR" não aparece. Teste primeiro no Chrome; depois, leitores candidatos: Xodo, ReadEra, Librera.
+**Leitores de PDF:** o visualizador de PDF do Files by Google tem menu de seleção próprio (só "Copiar" e "Selecionar tudo"), então "Traduzir pt-BR" não aparece nele: use a bolha. No navegador o item também não apareceu no primeiro teste; ainda não investigado.
 
 **Configuração**
 
@@ -78,4 +91,4 @@ Constantes em `android/app/src/main/java/com/conan/tradutor/Config.kt`:
 
 Depois de mudar, rode `make android`.
 
-**Privacidade:** o texto só é enviado ao Google Tradutor quando você toca em "Traduzir pt-BR", não a cada seleção.
+**Privacidade:** o texto só é enviado ao Google Tradutor quando você toca na bolha ou em "Traduzir pt-BR", não a cada seleção ou cópia.
