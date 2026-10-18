@@ -89,8 +89,10 @@ Constantes em `android/app/src/main/java/com/conan/tradutor/Config.kt`:
 | Constante | Padrão | O que faz |
 |---|---|---|
 | `HIDE_AFTER_S` | 15 | o popup some sozinho depois desse tempo |
-| `MAX_CHARS` | 3000 | ignora seleções maiores que isso |
+| `MAX_CHARS` | 3000 | seleções maiores que isso mostram o aviso "Texto grande demais" |
 | `POPUP_CHARS` | 80 | largura máxima do popup, em caracteres |
+
+Avisos do popup vermelho ao tocar na bolha: "Nada copiado" (área de transferência vazia, com imagem/arquivo ou com leitura bloqueada) e "Nada para traduzir" (texto sem nenhuma letra, como "42"; nenhuma requisição é feita). Pelo menu "Traduzir pt-BR", esses casos fecham sem mostrar nada.
 
 Depois de mudar, rode `make android`.
 
