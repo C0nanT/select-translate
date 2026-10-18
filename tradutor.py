@@ -14,7 +14,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk, Pango
 
-DEBOUNCE_MS = 500      # espera selecao "assentar" (arrastar mouse gera varios eventos)
+POLL_MS = 30           # arrastando mouse -> checa a cada POLL_MS se soltou o botao
 HIDE_AFTER_S = 15      # popup some sozinho
 MAX_CHARS = 3000
 POPUP_CHARS = 80       # largura maxima do popup, em caracteres
@@ -39,6 +39,11 @@ class Popup(Gtk.Window):
         self.set_accept_focus(False)
         self.set_keep_above(True)
         self.set_type_hint(Gdk.WindowTypeHint.TOOLTIP)
+        # fundo transparente -> cantos arredondados sem quina preta
+        visual = self.get_screen().get_rgba_visual()
+        if visual:
+            self.set_visual(visual)
+        self.set_app_paintable(True)
 
         frame = Gtk.EventBox()
         frame.connect("button-press-event", lambda *_: self.hide())
@@ -50,8 +55,8 @@ class Popup(Gtk.Window):
             .tp.error { border-color: #f38ba8; }
             .tp.error label { color: #f38ba8; }
             .tp.error .orig { color: #7f849c; }
-            .tp.loading label { color: #a6adc8; font-style: italic; }
-            .tp.loading .orig { color: #7f849c; font-style: normal; }
+            .tp.loading { border-radius: 9px; }
+            .tp spinner { color: #89b4fa; min-width: 12px; min-height: 12px; }
         """)
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
@@ -70,12 +75,16 @@ class Popup(Gtk.Window):
             box.pack_start(lbl, False, False, 0)
         self.orig.set_ellipsize(Pango.EllipsizeMode.END)
         self.orig.set_lines(2)
+        self.spinner = Gtk.Spinner()
+        box.pack_start(self.spinner, False, False, 0)
+        self.box = box
         frame.add(box)
         self.add(frame)
         self._hide_id = None
 
     def show_text(self, original, translated, state=None):
         """state: None (traducao), "loading" ou "error" -> classe CSS."""
+        loading = state == "loading"
         self.orig.set_text(original)
         self.trad.set_text(translated)
         ctx = self.get_child().get_style_context()
@@ -86,19 +95,32 @@ class Popup(Gtk.Window):
         for lbl in (self.orig, self.trad):
             lbl.set_width_chars(width)
             lbl.set_max_width_chars(width)
-        self.resize(1, 1)
         self.get_child().show_all()  # filhos visiveis -> medida de tamanho correta
+        # carregando -> so o icone girando; senao so os textos
+        for lbl in (self.orig, self.trad):
+            lbl.set_visible(not loading)
+        self.spinner.set_visible(loading)
+        (self.spinner.start if loading else self.spinner.stop)()
+        m = 3 if loading else 10
+        self.box.set_margin_top(m); self.box.set_margin_bottom(m)
+        m = 3 if loading else 12
+        self.box.set_margin_start(m); self.box.set_margin_end(m)
+        self.resize(1, 1)
 
-        # posiciona perto do mouse, sem sair da tela
+        # posiciona perto do mouse (fim da selecao), sem sair da tela
         _, x, y, _ = self._pointer()
         mon = Gdk.Display.get_default().get_monitor_at_point(x, y).get_geometry()
         _, nat = self.get_preferred_size()
         w, h = nat.width, nat.height
         right = mon.x + mon.width
+        gap = 8 if loading else 15
         # nao cabe a direita -> abre para a esquerda do mouse
-        x = x + 15 if x + 15 + w <= right - 5 else x - w - 15
+        x = x + gap if x + gap + w <= right - 5 else x - w - gap
         x = min(max(x, mon.x + 5), right - w - 5)
-        y = y + 20 if y + 20 + h < mon.y + mon.height else max(mon.y, y - h - 20)
+        if loading:  # icone na mesma linha do cursor
+            y = min(max(y - h // 2, mon.y), mon.y + mon.height - h)
+        else:
+            y = y + 20 if y + 20 + h < mon.y + mon.height else max(mon.y, y - h - 20)
         self.move(x, y)
         self.show()
 
@@ -140,16 +162,26 @@ class App:
         self.popup = Popup()
         self.last = ""
         self.pending = None
+        self._polling = False
         self.cb = Gtk.Clipboard.get(Gdk.SELECTION_PRIMARY)
         self.cb.connect("owner-change", self.on_change)
 
     def on_change(self, *_):
         if self.pending:
             GLib.source_remove(self.pending)
-        self.pending = GLib.timeout_add(DEBOUNCE_MS, self.read_selection)
+        self._polling = False
+        self.pending = GLib.idle_add(self.read_selection)
 
     def read_selection(self):
+        # ainda arrastando o mouse -> espera soltar (evita traduzir pedacos)
+        if self.popup._pointer()[3] & BUTTONS:
+            if self.pending and not self._polling:
+                self._polling = True
+                self.pending = GLib.timeout_add(POLL_MS, self.read_selection)
+                return False
+            return True
         self.pending = None
+        self._polling = False
         self.cb.request_text(self.on_text)
         return False
 
@@ -160,7 +192,7 @@ class App:
         if text == self.last or len(text) > MAX_CHARS or not any(c.isalpha() for c in text):
             return
         self.last = text
-        self.popup.show_text(text, "⏳ Traduzindo…", state="loading")
+        self.popup.show_text(text, "", state="loading")
         threading.Thread(target=self.worker, args=(text,), daemon=True).start()
 
     def worker(self, text):
