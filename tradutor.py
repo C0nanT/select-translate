@@ -4,6 +4,7 @@
 Uso: python3 tradutor.py   (Ctrl+C no terminal para parar)
 """
 import json
+import os
 import threading
 import urllib.parse
 import urllib.request
@@ -20,6 +21,9 @@ TICK_MS = 50           # passo da barra de tempo
 MAX_CHARS = 3000
 POPUP_CHARS = 80       # largura maxima do popup, em caracteres
 CLICK_HIDE_MS = 0      # apos clicar na tela, popup some nesse tempo
+MARGIN = 8             # distancia da borda da tela
+DRAG_PX = 4            # mexer menos que isso = clique (fecha), nao arrasto
+POS_FILE = os.path.expanduser("~/.config/select-translate.json")  # posicao arrastada
 BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
            | Gdk.ModifierType.BUTTON3_MASK)
 
@@ -46,8 +50,15 @@ class Popup(Gtk.Window):
             self.set_visual(visual)
         self.set_app_paintable(True)
 
+        # clique fecha; segurar e arrastar move (POPUP nao tem WM -> move na mao)
         frame = Gtk.EventBox()
-        frame.connect("button-press-event", lambda *_: self.hide())
+        frame.add_events(Gdk.EventMask.BUTTON_MOTION_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
+        frame.connect("button-press-event", self._press)
+        frame.connect("motion-notify-event", self._motion)
+        frame.connect("button-release-event", self._release)
+        self._drag = None
+        # ancora = ponto de baixo, no centro (x, y da tela): popup cresce p/ cima
+        self._anchor = self._load_anchor()
         css = Gtk.CssProvider()
         css.load_from_data(b"""
             .tp { background: #1e1e2e; border: 1px solid #89b4fa; border-radius: 6px; }
@@ -116,20 +127,19 @@ class Popup(Gtk.Window):
         self.box.set_margin_start(m); self.box.set_margin_end(m)
         self.resize(1, 1)
 
-        # posiciona perto do mouse (fim da selecao), sem sair da tela
-        _, x, y, _ = self._pointer()
-        mon = Gdk.Display.get_default().get_monitor_at_point(x, y).get_geometry()
+        # posicao fixa: embaixo no centro, ou onde foi arrastado por ultimo
         _, nat = self.get_preferred_size()
         w, h = nat.width, nat.height
-        right = mon.x + mon.width
-        gap = 8 if loading else 15
-        # nao cabe a direita -> abre para a esquerda do mouse
-        x = x + gap if x + gap + w <= right - 5 else x - w - gap
-        x = min(max(x, mon.x + 5), right - w - 5)
-        if loading:  # icone na mesma linha do cursor
-            y = min(max(y - h // 2, mon.y), mon.y + mon.height - h)
+        if self._anchor:
+            cx, bottom = self._anchor
+            area = self._workarea(cx, bottom - 1)
         else:
-            y = y + 20 if y + 20 + h < mon.y + mon.height else max(mon.y, y - h - 20)
+            _, px, py, _ = self._pointer()
+            area = self._workarea(px, py)
+            cx, bottom = area.x + area.width // 2, area.y + area.height - MARGIN
+        # sem sair da tela (monitor mudou, popup mais alto...)
+        x = min(max(cx - w // 2, area.x + MARGIN), area.x + area.width - w - MARGIN)
+        y = min(max(bottom - h, area.y + MARGIN), area.y + area.height - h - MARGIN)
         self.move(x, y)
         self.show()
 
@@ -138,6 +148,53 @@ class Popup(Gtk.Window):
         self._hide_id = GLib.timeout_add(TICK_MS, self._tick)
         self._was_pressed = self._pointer()[3] & BUTTONS
         self._poll_id = GLib.timeout_add(100, self._watch_click)
+
+    def _workarea(self, x, y):
+        # area util do monitor no ponto (sem painel/dock)
+        return Gdk.Display.get_default().get_monitor_at_point(x, y).get_workarea()
+
+    def _press(self, _w, ev):
+        if ev.button == 1:
+            self._drag = (ev.x_root, ev.y_root, *self.get_position(), False)
+        return True
+
+    def _motion(self, _w, ev):
+        if not self._drag:
+            return False
+        rx, ry, wx, wy, moved = self._drag
+        dx, dy = ev.x_root - rx, ev.y_root - ry
+        if not moved and max(abs(dx), abs(dy)) < DRAG_PX:
+            return True
+        self._drag = (rx, ry, wx, wy, True)
+        self.move(int(wx + dx), int(wy + dy))
+        return True
+
+    def _release(self, _w, ev):
+        drag, self._drag = self._drag, None
+        if not drag or not drag[4]:
+            self._auto_hide()  # clique sem arrastar -> fecha
+            return True
+        x, y = self.get_position()
+        w, h = self.get_size()
+        self._anchor = (x + w // 2, y + h)
+        self._save_anchor()
+        return True
+
+    def _load_anchor(self):
+        try:
+            with open(POS_FILE) as f:
+                pos = json.load(f)
+            return int(pos["x"]), int(pos["y"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+
+    def _save_anchor(self):
+        try:
+            os.makedirs(os.path.dirname(POS_FILE), exist_ok=True)
+            with open(POS_FILE, "w") as f:
+                json.dump({"x": self._anchor[0], "y": self._anchor[1]}, f)
+        except OSError:
+            pass  # sem disco -> vale so ate fechar o programa
 
     def _pointer(self):
         dev = Gdk.Display.get_default().get_default_seat().get_pointer()
@@ -163,8 +220,9 @@ class Popup(Gtk.Window):
 
     def _watch_click(self):
         # clique em qualquer lugar da tela -> some apos CLICK_HIDE_MS
+        # (no proprio popup quem decide e o _release: clique fecha, arrasto move)
         pressed = self._pointer()[3] & BUTTONS
-        if pressed and not self._was_pressed:
+        if pressed and not self._was_pressed and not self._hovered():
             self._cancel_timers()
             self._hide_id = GLib.timeout_add(CLICK_HIDE_MS, self._auto_hide)
             return False

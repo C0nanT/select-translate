@@ -1,6 +1,6 @@
 # select-translate
 
-Selecione um texto em qualquer app (leitor de PDF, navegador, etc.) e veja a tradução para pt-BR num popup ao lado do mouse, sem precisar copiar e colar.
+Selecione um texto em qualquer app (leitor de PDF, navegador, etc.) e veja a tradução para pt-BR num popup fixo embaixo da tela, sem precisar copiar e colar.
 
 Feito para ler livros em inglês e só consultar a tradução quando travar numa frase.
 
@@ -22,6 +22,7 @@ Ou direto: `python3 tradutor.py`.
 
 - Selecione o texto -> aparece "Traduzindo…" e depois a tradução
 - Clique em qualquer lugar -> o popup fecha
+- Segure e arraste o popup para mudar de lugar; os próximos abrem ali (fica salvo em `~/.config/select-translate.json`; apague o arquivo para voltar ao padrão)
 - Se a requisição falhar, o popup fica vermelho com o motivo
 
 Enquanto estiver rodando, **qualquer** texto selecionado é enviado ao Google Tradutor.
@@ -37,6 +38,7 @@ Constantes no topo do `tradutor.py`:
 | `MAX_CHARS` | 3000 | ignora seleções maiores que isso |
 | `POPUP_CHARS` | 80 | largura máxima do popup, em caracteres |
 | `CLICK_HIDE_MS` | 0 | atraso para fechar depois de um clique |
+| `MARGIN` | 8 | distância do popup até a borda da tela |
 
 ## Android (tablet)
 
@@ -73,6 +75,7 @@ O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`. Para instalar
 - Copie o texto e toque na bolha (ou selecione e toque em "Traduzir pt-BR" no menu) -> aparece "Traduzindo…" e depois a tradução
 - Some sozinho em 15 s; a barra embaixo mostra o tempo restante
 - Segurar o dedo sobre o popup pausa o tempo
+- Segure parado até vibrar e arraste para mudar o popup de lugar; os próximos abrem ali (arrastar sem segurar rola o texto)
 - Toque fora -> o popup fecha
 - Falha na requisição -> popup vermelho com o motivo
 - Texto acima de 3000 caracteres -> aviso "Texto grande demais (N caracteres)"
