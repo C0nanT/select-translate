@@ -13,13 +13,18 @@ Feito para ler livros em inglês e só consultar a tradução quando travar numa
 ## Uso
 
 ```bash
-python3 tradutor.py
+make start     # liga em segundo plano (pode fechar o terminal)
+make stop      # desliga
+make restart   # reinicia (depois de mudar o codigo)
+make status    # mostra se esta ligado
+make log       # mostra a saida/erros
 ```
+
+Ou direto no terminal: `python3 tradutor.py` (Ctrl+C para sair).
 
 - Selecione o texto -> aparece "Traduzindo…" e depois a tradução
 - Clique em qualquer lugar -> o popup fecha
 - Se a requisição falhar, o popup fica vermelho com o motivo
-- Ctrl+C no terminal para sair
 
 Enquanto estiver rodando, **qualquer** texto selecionado é enviado ao Google Tradutor.
 
