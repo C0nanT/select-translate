@@ -64,7 +64,7 @@ O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`. Para instalar
 - Falha na requisição -> popup vermelho com o motivo
 - Texto acima de 3000 caracteres -> aviso "Texto grande demais (N caracteres)"
 
-**Leitores de PDF:** alguns leitores têm menu de seleção próprio e não mostram itens de outros apps, então "Traduzir pt-BR" não aparece. Chrome funciona. Candidatos para testar: Xodo, ReadEra, Librera.
+**Leitores de PDF (risco em aberto, ainda não testado no tablet):** alguns leitores podem ter menu de seleção próprio e esconder itens de outros apps, e aí "Traduzir pt-BR" não aparece. Teste primeiro no Chrome; depois, leitores candidatos: Xodo, ReadEra, Librera.
 
 **Configuração**
 
