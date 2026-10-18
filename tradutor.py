@@ -15,7 +15,8 @@ gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk, Pango
 
 POLL_MS = 30           # arrastando mouse -> checa a cada POLL_MS se soltou o botao
-HIDE_AFTER_S = 15      # popup some sozinho
+HIDE_AFTER_S = 15      # popup some sozinho (pausa com mouse em cima)
+TICK_MS = 50           # passo da barra de tempo
 MAX_CHARS = 3000
 POPUP_CHARS = 80       # largura maxima do popup, em caracteres
 CLICK_HIDE_MS = 0      # apos clicar na tela, popup some nesse tempo
@@ -57,6 +58,9 @@ class Popup(Gtk.Window):
             .tp.error .orig { color: #7f849c; }
             .tp.loading { border-radius: 9px; }
             .tp spinner { color: #89b4fa; min-width: 12px; min-height: 12px; }
+            .tp progressbar trough { min-height: 3px; background: #313244; border: none; border-radius: 2px; }
+            .tp progressbar progress { min-height: 3px; background: #89b4fa; border: none; border-radius: 2px; }
+            .tp.error progressbar progress { background: #f38ba8; }
         """)
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
@@ -77,6 +81,9 @@ class Popup(Gtk.Window):
         self.orig.set_lines(2)
         self.spinner = Gtk.Spinner()
         box.pack_start(self.spinner, False, False, 0)
+        # tempo restante: barra ancorada a direita -> encolhe da esquerda p/ direita
+        self.bar = Gtk.ProgressBar(inverted=True)
+        box.pack_start(self.bar, False, False, 0)
         self.box = box
         frame.add(box)
         self.add(frame)
@@ -99,6 +106,8 @@ class Popup(Gtk.Window):
         # carregando -> so o icone girando; senao so os textos
         for lbl in (self.orig, self.trad):
             lbl.set_visible(not loading)
+        self.bar.set_visible(not loading)
+        self.bar.set_fraction(1.0)
         self.spinner.set_visible(loading)
         (self.spinner.start if loading else self.spinner.stop)()
         m = 3 if loading else 10
@@ -125,13 +134,32 @@ class Popup(Gtk.Window):
         self.show()
 
         self._cancel_timers()
-        self._hide_id = GLib.timeout_add_seconds(HIDE_AFTER_S, self._auto_hide)
+        self._left_ms = HIDE_AFTER_S * 1000
+        self._hide_id = GLib.timeout_add(TICK_MS, self._tick)
         self._was_pressed = self._pointer()[3] & BUTTONS
         self._poll_id = GLib.timeout_add(100, self._watch_click)
 
     def _pointer(self):
         dev = Gdk.Display.get_default().get_default_seat().get_pointer()
         return Gdk.get_default_root_window().get_device_position(dev)
+
+    def _hovered(self):
+        win = self.get_window()
+        if not win:
+            return False
+        _, px, py, _ = self._pointer()
+        _, wx, wy = win.get_origin()
+        return wx <= px < wx + win.get_width() and wy <= py < wy + win.get_height()
+
+    def _tick(self):
+        # mouse em cima -> tempo congela
+        if self._hovered():
+            return True
+        self._left_ms -= TICK_MS
+        if self._left_ms <= 0:
+            return self._auto_hide()
+        self.bar.set_fraction(self._left_ms / (HIDE_AFTER_S * 1000))
+        return True
 
     def _watch_click(self):
         # clique em qualquer lugar da tela -> some apos CLICK_HIDE_MS
