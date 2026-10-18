@@ -37,3 +37,16 @@ Constantes no topo do `tradutor.py`:
 | `MAX_CHARS` | 3000 | ignora seleções maiores que isso |
 | `POPUP_CHARS` | 80 | largura máxima do popup, em caracteres |
 | `CLICK_HIDE_MS` | 0 | atraso para fechar depois de um clique |
+
+## Android (tablet)
+
+App em `android/` que adiciona **"Traduzir pt-BR"** ao menu da seleção de texto (Chrome, leitores de PDF que mostram itens de outros apps). Tocar no item abre um popup embaixo da tela; toque fora fecha.
+
+Requer Android SDK em `~/Android/Sdk` (ou `ANDROID_HOME`) e Java 17+.
+
+```bash
+make android      # gera o APK debug e instala no tablet via USB (Depuração USB ligada)
+make android-apk  # só gera o APK
+```
+
+O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`.
