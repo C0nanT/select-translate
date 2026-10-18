@@ -65,8 +65,9 @@ O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`. Para instalar
 **Bolha**
 
 - Ligar: toque no ícone **Tradutor** na lista de apps. Na primeira vez ele abre a tela de "Sobrepor a outros apps": ative para o Tradutor e toque no ícone de novo
-- Desligar: toque na notificação "Bolha do Tradutor ligada"
-- Arraste a bolha para mudar de lugar
+- No Android 13+, ao ligar a bolha o app pede permissão de notificação (para mostrar "Toque para desligar"); negar não impede a bolha
+- Desligar: segure o dedo parado sobre a bolha até vibrar, ou toque na notificação "Bolha do Tradutor ligada"
+- Toque curto traduz; arraste a bolha para mudar de lugar (passou do limiar de toque do sistema, não traduz nem desliga)
 - Ao reiniciar o tablet, a bolha não volta sozinha: toque no ícone de novo
 - O Android avisa "Tradutor colou da área de transferência" a cada tradução; é esperado
 
