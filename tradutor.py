@@ -5,6 +5,7 @@ Uso: python3 tradutor.py   (Ctrl+C no terminal para parar)
 """
 import json
 import os
+import re
 import threading
 import urllib.parse
 import urllib.request
@@ -26,6 +27,23 @@ DRAG_PX = 4            # mexer menos que isso = clique (fecha), nao arrasto
 POS_FILE = os.path.expanduser("~/.config/select-translate.json")  # posicao arrastada
 BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
            | Gdk.ModifierType.BUTTON3_MASK)
+
+
+# Copia da juntarLinhas de android/.../Tradutor.kt: manter as duas iguais.
+# Texto copiado de PDF traz \n em cada fim de linha (e hifen em palavra cortada);
+# junta as linhas, linha em branco continua separando paragrafos.
+def juntar_linhas(texto):
+    def hifen(m):  # dis-|tributed some o hifen; Monolith-|To fica
+        return "" if m.group(1).islower() else "-"
+
+    pars = re.split(r"\n[ \t]*\n\s*", texto.replace("\r\n", "\n"))
+    out = []
+    for par in pars:
+        par = re.sub(r"-[ \t]*\n[ \t]*(?=(.?))", hifen, par)
+        par = re.sub(r"[ \t]*\n[ \t]*", " ", par)
+        par = re.sub(r"[ \t]{2,}", " ", par)
+        out.append(par.strip())
+    return "\n\n".join(out)
 
 
 def translate(text, target="pt"):
@@ -274,7 +292,7 @@ class App:
     def on_text(self, _cb, text):
         if not text:
             return
-        text = " ".join(text.split())  # junta quebras de linha do PDF
+        text = juntar_linhas(text)  # junta quebras de linha do PDF; limite vale depois
         if text == self.last or len(text) > MAX_CHARS or not any(c.isalpha() for c in text):
             return
         self.last = text
