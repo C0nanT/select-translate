@@ -6,7 +6,7 @@ import unittest
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "pc"))
 from cases import load_cases  # noqa: E402
-from nucleo import (Empty, NoLetters, TooLarge, Translation,  # noqa: E402
+from core import (Empty, NoLetters, TooLarge, Translation,  # noqa: E402
                     translate, validate)
 
 CASES = load_cases("validation.json")
@@ -18,7 +18,7 @@ def response(*parts):
     return json.dumps([[[p, "x"] for p in parts], None, "en"])
 
 
-# the cases live in casos/validation.json and also apply to Android (TranslatorTest.kt)
+# the cases live in cases/validation.json and also apply to Android (TranslatorTest.kt)
 class ValidationTest(unittest.TestCase):
     def test_shared_cases(self):
         self.assertTrue(CASES)

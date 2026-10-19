@@ -3,7 +3,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from nucleo import Stopwatch  # noqa: E402
+from core import Stopwatch  # noqa: E402
 
 
 # mirrors android/.../StopwatchTest.kt
