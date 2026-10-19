@@ -1,0 +1,15 @@
+[
+  {"nome": "texto vazio", "entrada": "", "esperado": {"tipo": "vazio"}},
+  {"nome": "só espaços e quebras", "entrada": "  \n \r\n\t ", "esperado": {"tipo": "vazio"}},
+  {"nome": "só número", "entrada": "42", "esperado": {"tipo": "sem_letras"}},
+  {"nome": "só pontuação e símbolos", "entrada": "3,14 % + 7 —", "esperado": {"tipo": "sem_letras"}},
+  {"nome": "uma letra basta", "entrada": "42 a", "esperado": {"tipo": "ok", "q": "42+a"}},
+  {"nome": "acentos, espaço e símbolos reservados", "entrada": "olá mundo&x=1", "esperado": {"tipo": "ok", "q": "ol%C3%A1+mundo%26x%3D1"}},
+  {"nome": "til fica cru e asterisco vira %2A", "entrada": "a~b*c", "esperado": {"tipo": "ok", "q": "a~b%2Ac"}},
+  {"nome": "hífen, ponto e sublinhado ficam crus", "entrada": "a-b.c_d", "esperado": {"tipo": "ok", "q": "a-b.c_d"}},
+  {"nome": "linhas de PDF são juntadas antes de enviar", "entrada": "dis-\ntributed\nsystems", "esperado": {"tipo": "ok", "q": "distributed+systems"}},
+  {"nome": "3000 caracteres ainda traduz", "entrada": "a", "vezes": 3000, "esperado": {"tipo": "ok", "q": "a"}},
+  {"nome": "3001 caracteres é grande demais", "entrada": "a", "vezes": 3001, "esperado": {"tipo": "grande_demais", "n": 3001}},
+  {"nome": "emoji conta 1 (code point), não 2 nem 4", "entrada": "a😀", "vezes": 1501, "esperado": {"tipo": "grande_demais", "n": 3002}},
+  {"nome": "URL longa demais com menos de 3000 caracteres", "entrada": "é", "vezes": 3000, "esperado": {"tipo": "grande_demais", "n": 3000}}
+]
