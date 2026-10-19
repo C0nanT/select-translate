@@ -18,7 +18,7 @@ make start    # liga preso ao terminal
 
 Ctrl+C ou fechar o terminal desliga.
 
-Ou direto: `python3 tradutor.py`.
+Ou direto: `python3 pc/tradutor.py`.
 
 Testes: `make test` (PC + Android). Para o `git push` rodar os testes antes de enviar, ative o hook uma vez em cada clone com `make hooks`. Sem Java ou Android SDK o push é bloqueado; `git push --no-verify` pula.
 
@@ -31,7 +31,7 @@ Enquanto estiver rodando, **qualquer** texto selecionado é enviado ao Google Tr
 
 ## Configuração
 
-Constantes no topo do `tradutor.py`:
+Constantes no topo de `pc/popup.py` (`HIDE_AFTER_S`, `POPUP_CHARS`, `CLICK_HIDE_MS`, `MARGIN`), `pc/nucleo.py` (`MAX_CHARS`) e `pc/selecao.py`:
 
 | Constante | Padrão | O que faz |
 |---|---|---|
