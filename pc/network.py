@@ -4,7 +4,7 @@ import socket
 import urllib.error
 import urllib.request
 
-from nucleo import NetworkError
+from core import NetworkError
 
 # no route / network down (plain OSError, not ConnectionError)
 _NO_ROUTE = {errno.ENETUNREACH, errno.EHOSTUNREACH, errno.ENETDOWN, errno.EHOSTDOWN}

@@ -10,8 +10,8 @@ MAX_URL = 8000
 TARGET_LANGUAGE = "pt"
 
 
-# Copy of joinLines in android/nucleo/src/main/kotlin/com/conan/tradutor/Translator.kt: keep both equal,
-# checked by the shared cases in casos/join_lines.json.
+# Copy of joinLines in android/core/src/main/kotlin/com/conan/translator/Translator.kt: keep both equal,
+# checked by the shared cases in cases/join_lines.json.
 # Text copied from a PDF has \n at every line end (and a hyphen in split words);
 # joins the lines, a blank line still separates paragraphs.
 def join_lines(text):
@@ -96,7 +96,7 @@ def clamp_position(pos, screen, window, centered_x):
 
 
 # --- translate: validation + URL + response, with the HTTP fetch coming from outside ---
-# Copy of Translator.kt (translate/translationUrl), checked by casos/validation.json.
+# Copy of Translator.kt (translate/translationUrl), checked by cases/validation.json.
 class _Marker:
     def __init__(self, name):
         self.name = name
@@ -118,7 +118,7 @@ class TooLarge(namedtuple("TooLarge", "n")):
 
 
 # Contract between the network adapter and the core (equal to NetworkError in Translator.kt):
-# fetch raises NetworkError; the adapter converts platform exceptions (see rede.py).
+# fetch raises NetworkError; the adapter converts platform exceptions (see network.py).
 # kind: "timeout", "no_connection", "http" (+ code) or "other" (+ detail).
 class NetworkError(Exception):
     def __init__(self, kind, code=None, detail=None):

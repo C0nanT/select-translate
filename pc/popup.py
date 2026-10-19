@@ -1,4 +1,4 @@
-"""Popup: janela GTK (adaptador de tela)."""
+"""Popup: GTK window (screen adapter)."""
 import json
 import os
 import time
@@ -9,20 +9,20 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk, Pango
 
-from nucleo import Stopwatch, Position, Size, clamp_position
+from core import Stopwatch, Position, Size, clamp_position
 
-HIDE_AFTER_S = 15      # popup some sozinho (pausa com mouse em cima)
-TICK_MS = 50           # passo da barra de tempo
-POPUP_CHARS = 80       # largura maxima do popup, em caracteres
-CLICK_HIDE_MS = 0      # apos clicar na tela, popup some nesse tempo
-MARGIN = 8             # distancia da borda da tela
-DRAG_PX = 4            # mexer menos que isso = clique (fecha), nao arrasto
-POS_FILE = os.path.expanduser("~/.config/select-translate.json")  # posicao arrastada
+HIDE_AFTER_S = 15      # popup hides itself (pauses while the mouse is over it)
+TICK_MS = 50           # step of the time bar
+POPUP_CHARS = 80       # max popup width, in characters
+CLICK_HIDE_MS = 0      # after a click on the screen, the popup hides within this time
+MARGIN = 8             # distance from the screen edge
+DRAG_PX = 4            # moving less than this = click (closes), not a drag
+POS_FILE = os.path.expanduser("~/.config/select-translate.json")  # dragged position
 BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
            | Gdk.ModifierType.BUTTON3_MASK)
 
 
-def _agora_ms():
+def _now_ms():
     return int(time.monotonic() * 1000)
 
 
@@ -32,20 +32,20 @@ class Popup(Gtk.Window):
         self.set_accept_focus(False)
         self.set_keep_above(True)
         self.set_type_hint(Gdk.WindowTypeHint.TOOLTIP)
-        # fundo transparente -> cantos arredondados sem quina preta
+        # transparent background -> rounded corners without a black edge
         visual = self.get_screen().get_rgba_visual()
         if visual:
             self.set_visual(visual)
         self.set_app_paintable(True)
 
-        # clique fecha; segurar e arrastar move (POPUP nao tem WM -> move na mao)
+        # click closes; hold and drag moves (POPUP has no WM -> move by hand)
         frame = Gtk.EventBox()
         frame.add_events(Gdk.EventMask.BUTTON_MOTION_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
         frame.connect("button-press-event", self._press)
         frame.connect("motion-notify-event", self._motion)
         frame.connect("button-release-event", self._release)
         self._drag = None
-        # ancora = ponto de baixo, no centro (x, y da tela): popup cresce p/ cima
+        # anchor = bottom-center point (screen x, y): popup grows upward
         self._anchor = self._load_anchor()
         css = Gtk.CssProvider()
         css.load_from_data(b"""
@@ -71,8 +71,8 @@ class Popup(Gtk.Window):
         box.set_margin_start(12); box.set_margin_end(12)
         self.orig = Gtk.Label(xalign=0)
         self.orig.get_style_context().add_class("orig")
-        self.trad = Gtk.Label(xalign=0)
-        for lbl in (self.orig, self.trad):
+        self.translation = Gtk.Label(xalign=0)
+        for lbl in (self.orig, self.translation):
             lbl.set_line_wrap(True)
             lbl.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
             box.pack_start(lbl, False, False, 0)
@@ -80,7 +80,7 @@ class Popup(Gtk.Window):
         self.orig.set_lines(2)
         self.spinner = Gtk.Spinner()
         box.pack_start(self.spinner, False, False, 0)
-        # tempo restante: barra ancorada a direita -> encolhe da esquerda p/ direita
+        # time left: bar anchored to the right -> shrinks from left to right
         self.bar = Gtk.ProgressBar(inverted=True)
         box.pack_start(self.bar, False, False, 0)
         self.box = box
@@ -90,21 +90,21 @@ class Popup(Gtk.Window):
         self._stopwatch = Stopwatch(HIDE_AFTER_S * 1000)
 
     def show_text(self, original, translated, state=None):
-        """state: None (traducao), "loading" ou "error" -> classe CSS."""
+        """state: None (translation), "loading" or "error" -> CSS class."""
         loading = state == "loading"
         self.orig.set_text(original)
-        self.trad.set_text(translated)
+        self.translation.set_text(translated)
         ctx = self.get_child().get_style_context()
         for cls in ("loading", "error"):
             (ctx.add_class if cls == state else ctx.remove_class)(cls)
-        # label com wrap pede largura minima -> popup fino e alto; forca largura
+        # a wrapping label asks for minimum width -> thin, tall popup; force the width
         width = max(20, min(len(translated), POPUP_CHARS))
-        for lbl in (self.orig, self.trad):
+        for lbl in (self.orig, self.translation):
             lbl.set_width_chars(width)
             lbl.set_max_width_chars(width)
-        self.get_child().show_all()  # filhos visiveis -> medida de tamanho correta
-        # carregando -> so o icone girando; senao so os textos
-        for lbl in (self.orig, self.trad):
+        self.get_child().show_all()  # children visible -> correct size measurement
+        # loading -> only the spinning icon; otherwise only the texts
+        for lbl in (self.orig, self.translation):
             lbl.set_visible(not loading)
         self.bar.set_visible(not loading)
         self.bar.set_fraction(1.0)
@@ -116,7 +116,7 @@ class Popup(Gtk.Window):
         self.box.set_margin_start(m); self.box.set_margin_end(m)
         self.resize(1, 1)
 
-        # posicao fixa: embaixo no centro, ou onde foi arrastado por ultimo
+        # fixed position: bottom center, or wherever it was last dragged
         _, nat = self.get_preferred_size()
         w, h = nat.width, nat.height
         if self._anchor:
@@ -126,7 +126,7 @@ class Popup(Gtk.Window):
             _, px, py, _ = self._pointer()
             area = self._workarea(px, py)
             cx, bottom = area.x + area.width // 2, area.y + area.height - MARGIN
-        # sem sair da tela (monitor mudou, popup mais alto...)
+        # stay on screen (monitor changed, taller popup...)
         util = Size(area.width - 2 * MARGIN, area.height - 2 * MARGIN)
         p = clamp_position(Position(cx - w // 2 - area.x - MARGIN, bottom - h - area.y - MARGIN),
                             util, Size(w, h), centered_x=False)
@@ -135,13 +135,13 @@ class Popup(Gtk.Window):
         self.show()
 
         self._cancel_timers()
-        self._stopwatch.start(_agora_ms())
+        self._stopwatch.start(_now_ms())
         self._hide_id = GLib.timeout_add(TICK_MS, self._tick)
         self._was_pressed = self._pointer()[3] & BUTTONS
         self._poll_id = GLib.timeout_add(100, self._watch_click)
 
     def _workarea(self, x, y):
-        # area util do monitor no ponto (sem painel/dock)
+        # usable monitor area at the point (without panel/dock)
         return Gdk.Display.get_default().get_monitor_at_point(x, y).get_workarea()
 
     def _press(self, _w, ev):
@@ -163,7 +163,7 @@ class Popup(Gtk.Window):
     def _release(self, _w, ev):
         drag, self._drag = self._drag, None
         if not drag or not drag[4]:
-            self._auto_hide()  # clique sem arrastar -> fecha
+            self._auto_hide()  # click without dragging -> closes
             return True
         x, y = self.get_position()
         w, h = self.get_size()
@@ -185,7 +185,7 @@ class Popup(Gtk.Window):
             with open(POS_FILE, "w") as f:
                 json.dump({"x": self._anchor[0], "y": self._anchor[1]}, f)
         except OSError:
-            pass  # sem disco -> vale so ate fechar o programa
+            pass  # no disk -> only lasts until the program closes
 
     def _pointer(self):
         dev = Gdk.Display.get_default().get_default_seat().get_pointer()
@@ -200,18 +200,18 @@ class Popup(Gtk.Window):
         return wx <= px < wx + win.get_width() and wy <= py < wy + win.get_height()
 
     def _tick(self):
-        # mouse em cima -> tempo congela
-        agora = _agora_ms()
-        (self._stopwatch.pause if self._hovered() else self._stopwatch.retomar)(agora)
-        self._stopwatch.elapse(agora)
+        # mouse over it -> time freezes
+        now = _now_ms()
+        (self._stopwatch.pause if self._hovered() else self._stopwatch.resume)(now)
+        self._stopwatch.elapse(now)
         if self._stopwatch.finished:
             return self._auto_hide()
         self.bar.set_fraction(self._stopwatch.fraction)
         return True
 
     def _watch_click(self):
-        # clique em qualquer lugar da tela -> some apos CLICK_HIDE_MS
-        # (no proprio popup quem decide e o _release: clique fecha, arrasto move)
+        # click anywhere on the screen -> hides after CLICK_HIDE_MS
+        # (on the popup itself, _release decides: click closes, drag moves)
         pressed = self._pointer()[3] & BUTTONS
         if pressed and not self._was_pressed and not self._hovered():
             self._cancel_timers()
@@ -233,5 +233,5 @@ class Popup(Gtk.Window):
         self.hide()
         return False
 
-    def botao_apertado(self):
+    def button_pressed(self):
         return bool(self._pointer()[3] & BUTTONS)

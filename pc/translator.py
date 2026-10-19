@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Tradutor de selecao: selecione texto em qualquer app -> popup com traducao pt-BR.
+"""Selection translator: select text in any app -> popup with the pt-BR translation.
 
-Uso: python3 pc/tradutor.py   (Ctrl+C no terminal para parar)
+Usage: python3 pc/translator.py   (Ctrl+C in the terminal to stop)
 """
 import os
 import sys
@@ -14,28 +14,28 @@ import gi  # noqa: E402
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
-from nucleo import TooLarge, Translation, join_lines, translate, validate  # noqa: E402
+from core import TooLarge, Translation, join_lines, translate, validate  # noqa: E402
 from popup import Popup  # noqa: E402
-from rede import fetch  # noqa: E402
-from selecao import Selecao  # noqa: E402
+from network import fetch  # noqa: E402
+from selection import Selection  # noqa: E402
 
 
 class App:
     def __init__(self):
         self.popup = Popup()
         self.last = ""
-        self.selecao = Selecao(self.popup.botao_apertado, self.on_text)
+        self.selection = Selection(self.popup.button_pressed, self.on_text)
 
     def on_text(self, text):
-        text = join_lines(text)  # junta quebras de linha do PDF; limite vale depois
+        text = join_lines(text)  # joins PDF line breaks; the size limit applies afterwards
         if text == self.last:
             return
         invalid = validate(text)
-        if isinstance(invalid, TooLarge):  # aviso vermelho, sem rede
+        if isinstance(invalid, TooLarge):  # red warning, no network
             self.last = text
             self.popup.show_text(text, "⚠ " + invalid.message, state="error")
             return
-        if invalid is not None:  # vazio ou sem letras: nao abre popup
+        if invalid is not None:  # empty or no letters: no popup
             return
         self.last = text
         self.popup.show_text(text, "", state="loading")
@@ -45,20 +45,20 @@ class App:
         r = translate(text, fetch)
         if isinstance(r, Translation):
             result, error = r.text, False
-        elif isinstance(r, TooLarge):  # URL grande demais depois de codificada
+        elif isinstance(r, TooLarge):  # URL too large once encoded
             result, error = "⚠ " + r.message, True
-        else:  # Failure (Empty/NoLetters ja filtrados em on_text)
+        else:  # Failure (Empty/NoLetters already filtered out in on_text)
             result, error = "⚠ " + r.reason, True
         GLib.idle_add(self.done, text, result, error)
 
     def done(self, text, result, error):
-        # usuario clicou (fechou) durante carregamento, ou ja selecionou outra coisa
+        # user clicked (closed) while loading, or already selected something else
         if not self.popup.get_visible() or text != self.last:
             if error and text == self.last:
                 self.last = ""
             return
         if error:
-            self.last = ""  # permite tentar de novo com a mesma selecao
+            self.last = ""  # allows retrying with the same selection
             self.popup.show_text(text, result, state="error")
         else:
             self.popup.show_text(text, result)

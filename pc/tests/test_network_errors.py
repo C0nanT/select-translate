@@ -8,8 +8,8 @@ from unittest import mock
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "pc"))
 from cases import load_cases  # noqa: E402
-from nucleo import Failure, NetworkError, translate  # noqa: E402
-import rede  # noqa: E402
+from core import Failure, NetworkError, translate  # noqa: E402
+import network  # noqa: E402
 
 CASES = load_cases("network_errors.json")
 
@@ -24,7 +24,7 @@ def failure(d):
     return NetworkError.other(d["detail"])
 
 
-# the cases live in casos/network_errors.json and also apply to Android (NetworkErrorsTest.kt)
+# the cases live in cases/network_errors.json and also apply to Android (NetworkErrorsTest.kt)
 class MessagesTest(unittest.TestCase):
     def test_shared_cases(self):
         self.assertTrue(CASES)
@@ -42,7 +42,7 @@ class MessagesTest(unittest.TestCase):
 
 class ConversionTest(unittest.TestCase):
     def kind(self, e):
-        r = rede.convert_exception(e)
+        r = network.convert_exception(e)
         self.assertIsInstance(r, NetworkError)
         return (r.kind, r.code, r.detail)
 
@@ -73,7 +73,7 @@ class ConversionTest(unittest.TestCase):
         error = urllib.error.URLError(socket.gaierror(-2, "x"))
         with mock.patch("urllib.request.urlopen", side_effect=error):
             with self.assertRaises(NetworkError) as c:
-                rede.fetch("http://x")
+                network.fetch("http://x")
         self.assertEqual("no_connection", c.exception.kind)
 
     def test_non_200_status_becomes_http(self):
@@ -82,7 +82,7 @@ class ConversionTest(unittest.TestCase):
         r.status = 204
         with mock.patch("urllib.request.urlopen", return_value=r):
             with self.assertRaises(NetworkError) as c:
-                rede.fetch("http://x")
+                network.fetch("http://x")
         self.assertEqual(("http", 204), (c.exception.kind, c.exception.code))
 
 

@@ -3,7 +3,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from nucleo import Position, Size, clamp_position  # noqa: E402
+from core import Position, Size, clamp_position  # noqa: E402
 
 SCREEN = Size(1000, 600)
 WINDOW = Size(400, 100)
