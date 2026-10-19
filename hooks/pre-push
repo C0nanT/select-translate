@@ -1,0 +1,28 @@
+#!/bin/sh
+# Pre-push: roda `make test` (PC + Android) antes de cada git push.
+# Ativado por `make hooks` (core.hooksPath). Para pular: git push --no-verify
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+# mesmo padrao do Makefile: ANDROID_HOME ?= $(HOME)/Android/Sdk
+sdk="${ANDROID_HOME:-$HOME/Android/Sdk}"
+faltando=""
+
+if ! command -v java >/dev/null 2>&1; then
+    faltando="${faltando}\n  - Java (JDK) no PATH"
+fi
+if [ ! -d "$sdk" ]; then
+    faltando="${faltando}\n  - Android SDK em $sdk (ou defina ANDROID_HOME)"
+fi
+if [ -n "$faltando" ]; then
+    printf 'push bloqueado: os testes precisam de:%b\n' "$faltando" >&2
+    printf 'para enviar sem testar: git push --no-verify\n' >&2
+    exit 1
+fi
+
+echo "pre-push: rodando make test (PC + Android)..."
+if ! make test; then
+    echo "push bloqueado: testes falharam. Corrija ou use git push --no-verify." >&2
+    exit 1
+fi
