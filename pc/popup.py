@@ -127,9 +127,9 @@ class Popup(Gtk.Window):
             area = self._workarea(px, py)
             cx, bottom = area.x + area.width // 2, area.y + area.height - MARGIN
         # stay on screen (monitor changed, taller popup...)
-        util = Size(area.width - 2 * MARGIN, area.height - 2 * MARGIN)
+        usable = Size(area.width - 2 * MARGIN, area.height - 2 * MARGIN)
         p = clamp_position(Position(cx - w // 2 - area.x - MARGIN, bottom - h - area.y - MARGIN),
-                            util, Size(w, h), centered_x=False)
+                            usable, Size(w, h), centered_x=False)
         x, y = area.x + MARGIN + p.x, area.y + MARGIN + p.y
         self.move(x, y)
         self.show()
