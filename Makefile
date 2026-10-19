@@ -1,4 +1,4 @@
-.PHONY: start test android android-apk
+.PHONY: start test test-pc test-android android android-apk
 
 ANDROID_HOME ?= $(HOME)/Android/Sdk
 ADB := $(ANDROID_HOME)/platform-tools/adb
@@ -8,9 +8,16 @@ APK := android/app/build/outputs/apk/debug/app-debug.apk
 start:
 	python3 -u tradutor.py
 
+# PC + Android
+test: test-pc test-android
+
 # testes unitarios do PC (sem GTK/rede)
-test:
+test-pc:
 	python3 -m unittest discover -s tests -v
+
+# testes unitarios do Android (Gradle, sem aparelho)
+test-android:
+	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew testDebugUnitTest
 
 # gera o APK debug e instala no tablet (USB, Depuracao USB ligada)
 android: android-apk

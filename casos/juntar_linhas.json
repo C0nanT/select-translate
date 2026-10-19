@@ -1,0 +1,27 @@
+[
+  {
+    "nome": "quebra simples vira espaço",
+    "entrada": "has a whole\nhost of advantages",
+    "esperado": "has a whole host of advantages"
+  },
+  {
+    "nome": "hífen no fim da linha junta a palavra",
+    "entrada": "associated with dis-\ntributed systems",
+    "esperado": "associated with distributed systems"
+  },
+  {
+    "nome": "hífen antes de maiúscula fica",
+    "entrada": "Monolith-\nTo",
+    "esperado": "Monolith-To"
+  },
+  {
+    "nome": "linha em branco separa parágrafos",
+    "entrada": "um\ndois\n\n\ntres",
+    "esperado": "um dois\n\ntres"
+  },
+  {
+    "nome": "CRLF e espaços na quebra",
+    "entrada": "a  \r\n  b\r\nc",
+    "esperado": "a b c"
+  }
+]
