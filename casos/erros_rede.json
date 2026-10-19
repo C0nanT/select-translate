@@ -1,7 +1,0 @@
-[
-  {"nome": "tempo esgotado", "falha": {"tipo": "tempo_esgotado"}, "esperado": "Tempo esgotado"},
-  {"nome": "sem conexão", "falha": {"tipo": "sem_conexao"}, "esperado": "Sem conexão com a internet"},
-  {"nome": "HTTP 503", "falha": {"tipo": "http", "codigo": 503}, "esperado": "Erro do servidor (HTTP 503)"},
-  {"nome": "HTTP 429", "falha": {"tipo": "http", "codigo": 429}, "esperado": "Erro do servidor (HTTP 429)"},
-  {"nome": "outro mostra o detalhe", "falha": {"tipo": "outro", "detalhe": "boom"}, "esperado": "boom"}
-]
