@@ -1,8 +1,14 @@
 """Nucleo: regras puras, sem GTK e sem rede."""
+import json
 import re
+import socket
+import urllib.parse
 from collections import namedtuple
 
 MAX_CHARS = 3000
+# teto da URL ja codificada; igual a MAX_URL de Limites.kt (valor conservador, nao medido)
+MAX_URL = 8000
+IDIOMA_DESTINO = "pt"
 
 
 # Copia da juntarLinhas de android/.../Tradutor.kt: manter as duas iguais,
@@ -88,3 +94,92 @@ def ajustar_posicao(pos, tela, janela, centrada_x):
         x = _limitar(pos.x, 0, sobra_x)
     y = _limitar(pos.y, 0, max(0, tela.altura - janela.altura))
     return Pos(x, y)
+
+
+# --- traduzir: validacao + URL + resposta, com a busca HTTP vinda de fora ---
+# Copia de Tradutor.kt (traduzir/urlTraducao), conferida por casos/validacao.json.
+class _Marca:
+    def __init__(self, nome):
+        self.nome = nome
+
+    def __repr__(self):
+        return self.nome
+
+
+Vazio = _Marca("Vazio")
+SemLetras = _Marca("SemLetras")
+Traducao = namedtuple("Traducao", "texto")
+Erro = namedtuple("Erro", "motivo")
+
+
+class GrandeDemais(namedtuple("GrandeDemais", "n")):
+    @property
+    def mensagem(self):
+        return f"Texto grande demais ({self.n} caracteres)"
+
+
+# a busca lanca isto em resposta HTTP diferente de 200
+class ErroHttp(Exception):
+    def __init__(self, codigo):
+        super().__init__(f"HTTP {codigo}")
+        self.codigo = codigo
+
+
+def url_traducao(texto):
+    # Regra unica de codificacao do q (iguala Python e Java): RFC 3986. Ficam crus
+    # so A-Z a-z 0-9 - . _ ~ ; espaco vira +; todo o resto vira %XX em UTF-8.
+    # Divergiam em ~ (Java: %7E) e * (Java: cru, Python: %2A); o Kotlin e que se ajusta.
+    q = urllib.parse.quote_plus(texto, safe="", encoding="utf-8")
+    return ("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto"
+            f"&tl={IDIOMA_DESTINO}&dt=t&q={q}")
+
+
+def validar(texto):
+    """Vazio, SemLetras, GrandeDemais(n) ou None se o texto (ja com linhas juntadas) serve."""
+    if not texto.strip():
+        return Vazio
+    if not any(c.isalpha() for c in texto):
+        return SemLetras
+    if len(texto) > MAX_CHARS:  # str conta code points: emoji vale 1
+        return GrandeDemais(len(texto))
+    return None
+
+
+def _motivo(e):
+    if isinstance(e, ErroHttp):
+        return f"Erro do servidor (HTTP {e.codigo})"
+    if isinstance(e, TimeoutError):
+        return "Tempo esgotado"
+    if isinstance(e, (ConnectionError, socket.gaierror)):
+        return "Sem conexão com a internet"
+    return str(e) or type(e).__name__
+
+
+def _extrair(corpo):
+    partes = json.loads(corpo)[0]
+    out = []
+    for parte in partes:
+        p = parte[0]
+        if p is not None and not isinstance(p, str):
+            raise ValueError("parte invalida")
+        out.append(p or "")
+    return "".join(out)
+
+
+def traduzir(bruto, busca):
+    """busca(url) -> corpo (str); lanca excecao em falha de rede (ErroHttp, TimeoutError, ...)."""
+    texto = juntar_linhas(bruto)
+    invalido = validar(texto)
+    if invalido is not None:
+        return invalido
+    url = url_traducao(texto)
+    if len(url) > MAX_URL:
+        return GrandeDemais(len(texto))  # n e <= MAX_CHARS: conta caracteres, nao a URL
+    try:
+        corpo = busca(url)
+    except Exception as e:
+        return Erro(_motivo(e))
+    try:
+        return Traducao(_extrair(corpo))
+    except Exception:
+        return Erro("Resposta inesperada do Google Tradutor")
