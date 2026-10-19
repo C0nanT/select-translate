@@ -14,9 +14,9 @@ import gi  # noqa: E402
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
-from nucleo import GrandeDemais, Traducao, juntar_linhas, traduzir, validar  # noqa: E402
+from nucleo import TooLarge, Translation, join_lines, translate, validate  # noqa: E402
 from popup import Popup  # noqa: E402
-from rede import busca  # noqa: E402
+from rede import fetch  # noqa: E402
 from selecao import Selecao  # noqa: E402
 
 
@@ -27,28 +27,28 @@ class App:
         self.selecao = Selecao(self.popup.botao_apertado, self.on_text)
 
     def on_text(self, text):
-        text = juntar_linhas(text)  # junta quebras de linha do PDF; limite vale depois
+        text = join_lines(text)  # junta quebras de linha do PDF; limite vale depois
         if text == self.last:
             return
-        invalido = validar(text)
-        if isinstance(invalido, GrandeDemais):  # aviso vermelho, sem rede
+        invalid = validate(text)
+        if isinstance(invalid, TooLarge):  # aviso vermelho, sem rede
             self.last = text
-            self.popup.show_text(text, "⚠ " + invalido.mensagem, state="error")
+            self.popup.show_text(text, "⚠ " + invalid.message, state="error")
             return
-        if invalido is not None:  # vazio ou sem letras: nao abre popup
+        if invalid is not None:  # vazio ou sem letras: nao abre popup
             return
         self.last = text
         self.popup.show_text(text, "", state="loading")
         threading.Thread(target=self.worker, args=(text,), daemon=True).start()
 
     def worker(self, text):
-        r = traduzir(text, busca)
-        if isinstance(r, Traducao):
-            result, error = r.texto, False
-        elif isinstance(r, GrandeDemais):  # URL grande demais depois de codificada
-            result, error = "⚠ " + r.mensagem, True
-        else:  # Erro (Vazio/SemLetras ja filtrados em on_text)
-            result, error = "⚠ " + r.motivo, True
+        r = translate(text, fetch)
+        if isinstance(r, Translation):
+            result, error = r.text, False
+        elif isinstance(r, TooLarge):  # URL grande demais depois de codificada
+            result, error = "⚠ " + r.message, True
+        else:  # Failure (Empty/NoLetters ja filtrados em on_text)
+            result, error = "⚠ " + r.reason, True
         GLib.idle_add(self.done, text, result, error)
 
     def done(self, text, result, error):

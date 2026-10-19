@@ -1,27 +1,27 @@
-"""Nucleo: regras puras, sem GTK e sem rede."""
+"""Core: pure rules, no GTK and no network."""
 import json
 import re
 import urllib.parse
 from collections import namedtuple
 
 MAX_CHARS = 3000
-# teto da URL ja codificada; igual a MAX_URL de Limites.kt (valor conservador, nao medido)
+# cap on the already-encoded URL; equal to MAX_URL in Limits.kt (conservative value, not measured)
 MAX_URL = 8000
-IDIOMA_DESTINO = "pt"
+TARGET_LANGUAGE = "pt"
 
 
-# Copia da juntarLinhas de android/nucleo/src/main/kotlin/com/conan/tradutor/Tradutor.kt: manter as duas iguais,
-# conferidas pelos casos compartilhados em casos/juntar_linhas.json.
-# Texto copiado de PDF traz \n em cada fim de linha (e hifen em palavra cortada);
-# junta as linhas, linha em branco continua separando paragrafos.
-def juntar_linhas(texto):
-    def hifen(m):  # dis-|tributed some o hifen; Monolith-|To fica
+# Copy of joinLines in android/nucleo/src/main/kotlin/com/conan/tradutor/Translator.kt: keep both equal,
+# checked by the shared cases in casos/join_lines.json.
+# Text copied from a PDF has \n at every line end (and a hyphen in split words);
+# joins the lines, a blank line still separates paragraphs.
+def join_lines(text):
+    def hyphen(m):  # dis-|tributed drops the hyphen; Monolith-|To keeps it
         return "" if m.group(1).islower() else "-"
 
-    pars = re.split(r"\n[ \t]*\n\s*", texto.replace("\r\n", "\n"))
+    paragraphs = re.split(r"\n[ \t]*\n\s*", text.replace("\r\n", "\n"))
     out = []
-    for par in pars:
-        par = re.sub(r"-[ \t]*\n[ \t]*(?=(.?))", hifen, par)
+    for par in paragraphs:
+        par = re.sub(r"-[ \t]*\n[ \t]*(?=(.?))", hyphen, par)
         par = re.sub(r"[ \t]*\n[ \t]*", " ", par)
         par = re.sub(r"[ \t]{2,}", " ", par)
         out.append(par.strip())
@@ -95,121 +95,121 @@ def clamp_position(pos, screen, window, centered_x):
     return Position(x, y)
 
 
-# --- traduzir: validacao + URL + resposta, com a busca HTTP vinda de fora ---
-# Copia de Tradutor.kt (traduzir/urlTraducao), conferida por casos/validacao.json.
-class _Marca:
-    def __init__(self, nome):
-        self.nome = nome
+# --- translate: validation + URL + response, with the HTTP fetch coming from outside ---
+# Copy of Translator.kt (translate/translationUrl), checked by casos/validation.json.
+class _Marker:
+    def __init__(self, name):
+        self.name = name
 
     def __repr__(self):
-        return self.nome
+        return self.name
 
 
-Vazio = _Marca("Vazio")
-SemLetras = _Marca("SemLetras")
-Traducao = namedtuple("Traducao", "texto")
-Erro = namedtuple("Erro", "motivo")
+Empty = _Marker("Empty")
+NoLetters = _Marker("NoLetters")
+Translation = namedtuple("Translation", "text")
+Failure = namedtuple("Failure", "reason")
 
 
-class GrandeDemais(namedtuple("GrandeDemais", "n")):
+class TooLarge(namedtuple("TooLarge", "n")):
     @property
-    def mensagem(self):
+    def message(self):
         return f"Texto grande demais ({self.n} caracteres)"
 
 
-# Contrato entre o adaptador de rede e o nucleo (igual a ErroRede em Tradutor.kt):
-# a busca lanca ErroRede; o adaptador converte as excecoes da plataforma (ver rede.py).
-# tipo: "tempo_esgotado", "sem_conexao", "http" (+ codigo) ou "outro" (+ detalhe).
-class ErroRede(Exception):
-    def __init__(self, tipo, codigo=None, detalhe=None):
-        super().__init__(tipo)
-        self.tipo = tipo
-        self.codigo = codigo
-        self.detalhe = detalhe
+# Contract between the network adapter and the core (equal to NetworkError in Translator.kt):
+# fetch raises NetworkError; the adapter converts platform exceptions (see rede.py).
+# kind: "timeout", "no_connection", "http" (+ code) or "other" (+ detail).
+class NetworkError(Exception):
+    def __init__(self, kind, code=None, detail=None):
+        super().__init__(kind)
+        self.kind = kind
+        self.code = code
+        self.detail = detail
 
     @classmethod
-    def tempo_esgotado(cls):
-        return cls("tempo_esgotado")
+    def timeout(cls):
+        return cls("timeout")
 
     @classmethod
-    def sem_conexao(cls):
-        return cls("sem_conexao")
+    def no_connection(cls):
+        return cls("no_connection")
 
     @classmethod
-    def http(cls, codigo):
-        return cls("http", codigo=codigo)
+    def http(cls, code):
+        return cls("http", code=code)
 
     @classmethod
-    def outro(cls, detalhe):
-        return cls("outro", detalhe=detalhe)
+    def other(cls, detail):
+        return cls("other", detail=detail)
 
     @property
-    def mensagem(self):  # unico lugar das mensagens de erro de rede
-        if self.tipo == "tempo_esgotado":
+    def message(self):  # the only place for network error messages (user-facing, pt-BR)
+        if self.kind == "timeout":
             return "Tempo esgotado"
-        if self.tipo == "sem_conexao":
+        if self.kind == "no_connection":
             return "Sem conexão com a internet"
-        if self.tipo == "http":
-            return f"Erro do servidor (HTTP {self.codigo})"
-        return self.detalhe
+        if self.kind == "http":
+            return f"Erro do servidor (HTTP {self.code})"
+        return self.detail
 
 
-def url_traducao(texto):
-    # Regra unica de codificacao do q (iguala Python e Java): RFC 3986. Ficam crus
-    # so A-Z a-z 0-9 - . _ ~ ; espaco vira +; todo o resto vira %XX em UTF-8.
-    # Divergiam em ~ (Java: %7E) e * (Java: cru, Python: %2A); o Kotlin e que se ajusta.
-    q = urllib.parse.quote_plus(texto, safe="", encoding="utf-8")
+def translation_url(text):
+    # Single encoding rule for q (makes Python and Java agree): RFC 3986. Only
+    # A-Z a-z 0-9 - . _ ~ stay raw; space becomes +; everything else becomes %XX in UTF-8.
+    # They diverged on ~ (Java: %7E) and * (Java: raw, Python: %2A); Kotlin is the one that adjusts.
+    q = urllib.parse.quote_plus(text, safe="", encoding="utf-8")
     return ("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto"
-            f"&tl={IDIOMA_DESTINO}&dt=t&q={q}")
+            f"&tl={TARGET_LANGUAGE}&dt=t&q={q}")
 
 
-def validar(texto):
-    """Vazio, SemLetras, GrandeDemais(n) ou None se o texto (ja com linhas juntadas) serve."""
-    if not texto.strip():
-        return Vazio
-    if not any(c.isalpha() for c in texto):
-        return SemLetras
-    if len(texto) > MAX_CHARS:  # str conta code points: emoji vale 1
-        return GrandeDemais(len(texto))
+def validate(text):
+    """Empty, NoLetters, TooLarge(n) or None if the text (lines already joined) is fine."""
+    if not text.strip():
+        return Empty
+    if not any(c.isalpha() for c in text):
+        return NoLetters
+    if len(text) > MAX_CHARS:  # str counts code points: an emoji is 1
+        return TooLarge(len(text))
     return None
 
 
-def _motivo(e):
-    if isinstance(e, ErroRede):
-        return e.mensagem
-    return str(e) or type(e).__name__  # excecao fora do contrato: trata como "outro"
+def _reason(e):
+    if isinstance(e, NetworkError):
+        return e.message
+    return str(e) or type(e).__name__  # exception outside the contract: treated as "other"
 
 
-def _extrair(corpo):
-    dados = json.loads(corpo)
-    # so listas: str e dict tambem se indexam em Python, mas o Kotlin (e a API) so aceitam lista
-    if not isinstance(dados, list) or not isinstance(dados[0], list):
-        raise ValueError("formato inesperado")
+def _extract(body):
+    data = json.loads(body)
+    # lists only: str and dict also index in Python, but Kotlin (and the API) only accept lists
+    if not isinstance(data, list) or not isinstance(data[0], list):
+        raise ValueError("unexpected format")
     out = []
-    for parte in dados[0]:
-        if not isinstance(parte, list):
-            raise ValueError("parte invalida")
-        p = parte[0]
+    for part in data[0]:
+        if not isinstance(part, list):
+            raise ValueError("invalid part")
+        p = part[0]
         if p is not None and not isinstance(p, str):
-            raise ValueError("parte invalida")
+            raise ValueError("invalid part")
         out.append(p or "")
     return "".join(out)
 
 
-def traduzir(bruto, busca):
-    """busca(url) -> corpo (str); lanca excecao em falha de rede (ErroRede)."""
-    texto = juntar_linhas(bruto)
-    invalido = validar(texto)
-    if invalido is not None:
-        return invalido
-    url = url_traducao(texto)
+def translate(raw, fetch):
+    """fetch(url) -> body (str); raises an exception on network failure (NetworkError)."""
+    text = join_lines(raw)
+    invalid = validate(text)
+    if invalid is not None:
+        return invalid
+    url = translation_url(text)
     if len(url) > MAX_URL:
-        return GrandeDemais(len(texto))  # n e <= MAX_CHARS: conta caracteres, nao a URL
+        return TooLarge(len(text))  # n is <= MAX_CHARS: counts characters, not the URL
     try:
-        corpo = busca(url)
+        body = fetch(url)
     except Exception as e:
-        return Erro(_motivo(e))
+        return Failure(_reason(e))
     try:
-        return Traducao(_extrair(corpo))
+        return Translation(_extract(body))
     except Exception:
-        return Erro("Resposta inesperada do Google Tradutor")
+        return Failure("Resposta inesperada do Google Tradutor")
