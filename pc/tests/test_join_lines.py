@@ -5,12 +5,12 @@ import unittest
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "pc"))
 from cases import load_cases  # noqa: E402
-from nucleo import join_lines  # noqa: E402
+from core import join_lines  # noqa: E402
 
 CASES = load_cases("join_lines.json")
 
 
-# the cases live in casos/join_lines.json and also apply to Android (TranslatorTest.kt)
+# the cases live in cases/join_lines.json and also apply to Android (TranslatorTest.kt)
 class JoinLinesTest(unittest.TestCase):
     def test_shared_cases(self):
         self.assertTrue(CASES)

@@ -6,7 +6,7 @@ APK := android/app/build/outputs/apk/debug/app-debug.apk
 
 # roda preso ao terminal: Ctrl+C ou fechar o terminal desliga
 start:
-	python3 -u pc/tradutor.py
+	python3 -u pc/translator.py
 
 # PC + Android
 test: test-pc test-android

@@ -1,23 +1,23 @@
-"""Selecao: selecao primaria do X11, espera soltar o mouse, so repassa o texto."""
+"""Selection: X11 primary selection; waits for the mouse release, then just passes the text on."""
 import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk
 
-POLL_MS = 30           # arrastando mouse -> checa a cada POLL_MS se soltou o botao
+POLL_MS = 30           # while dragging the mouse: check every POLL_MS whether the button was released
 
 
-class Selecao:
-    """Chama ao_selecionar(texto) quando a selecao muda e o mouse foi solto.
+class Selection:
+    """Calls on_selected(text) when the selection changes and the mouse was released.
 
-    botao_apertado: funcao sem argumentos (vem do popup, que sabe ler o ponteiro).
-    Ignorar texto repetido e feito em App.on_text, nao aqui.
+    button_pressed: zero-argument function (comes from the popup, which can read the pointer).
+    Ignoring repeated text is done in App.on_text, not here.
     """
 
-    def __init__(self, botao_apertado, ao_selecionar):
-        self._botao_apertado = botao_apertado
-        self._ao_selecionar = ao_selecionar
+    def __init__(self, button_pressed, on_selected):
+        self._button_pressed = button_pressed
+        self._on_selected = on_selected
         self.pending = None
         self._polling = False
         self.cb = Gtk.Clipboard.get(Gdk.SELECTION_PRIMARY)
@@ -30,8 +30,8 @@ class Selecao:
         self.pending = GLib.idle_add(self.read_selection)
 
     def read_selection(self):
-        # ainda arrastando o mouse -> espera soltar (evita traduzir pedacos)
-        if self._botao_apertado():
+        # still dragging the mouse -> wait for release (avoids translating fragments)
+        if self._button_pressed():
             if self.pending and not self._polling:
                 self._polling = True
                 self.pending = GLib.timeout_add(POLL_MS, self.read_selection)
@@ -44,4 +44,4 @@ class Selecao:
 
     def _on_text(self, _cb, text):
         if text:
-            self._ao_selecionar(text)
+            self._on_selected(text)
