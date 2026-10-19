@@ -17,7 +17,7 @@ test-pc:
 
 # testes unitarios do Android (Gradle, sem aparelho): nucleo (JVM puro) + app
 test-android:
-	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew :nucleo:test :app:testDebugUnitTest
+	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew :core:test :app:testDebugUnitTest
 
 # ativa o pre-push versionado em hooks/ (uma vez por clone; repetir e seguro)
 hooks:
