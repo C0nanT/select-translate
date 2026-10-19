@@ -156,9 +156,14 @@ def _motivo(e):
 
 
 def _extrair(corpo):
-    partes = json.loads(corpo)[0]
+    dados = json.loads(corpo)
+    # so listas: str e dict tambem se indexam em Python, mas o Kotlin (e a API) so aceitam lista
+    if not isinstance(dados, list) or not isinstance(dados[0], list):
+        raise ValueError("formato inesperado")
     out = []
-    for parte in partes:
+    for parte in dados[0]:
+        if not isinstance(parte, list):
+            raise ValueError("parte invalida")
         p = parte[0]
         if p is not None and not isinstance(p, str):
             raise ValueError("parte invalida")

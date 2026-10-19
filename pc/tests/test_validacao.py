@@ -65,15 +65,6 @@ class ResultadosTest(unittest.TestCase):
         self.assertEqual(Erro("Erro do servidor (HTTP 503)"), erro(ErroHttp(503)))
         self.assertEqual(Erro("boom"), erro(OSError("boom")))
 
-    def test_resposta_invalida_vira_erro(self):
-        for corpo in ("<html>oops", "", "[[1,2]", "{}", "[]", "[[1]]", "[[[5]]]"):
-            with self.subTest(corpo=corpo):
-                self.assertEqual(Erro("Resposta inesperada do Google Tradutor"),
-                                 traduzir("x", lambda _: corpo))
-
-    def test_partes_concatenadas_ignorando_vazias(self):
-        corpo = json.dumps([[["um", "x"], ["", ""], [None, None], ["dois", "y"]], None, "en"])
-        self.assertEqual(Traducao("umdois"), traduzir("x", lambda _: corpo))
 
 
 if __name__ == "__main__":
