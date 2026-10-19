@@ -18,7 +18,7 @@ make start    # liga preso ao terminal
 
 Ctrl+C ou fechar o terminal desliga.
 
-Ou direto: `python3 tradutor.py`.
+Ou direto: `python3 pc/tradutor.py`.
 
 - Selecione o texto -> aparece "Traduzindo…" e depois a tradução
 - Clique em qualquer lugar -> o popup fecha
@@ -29,7 +29,7 @@ Enquanto estiver rodando, **qualquer** texto selecionado é enviado ao Google Tr
 
 ## Configuração
 
-Constantes no topo do `tradutor.py`:
+Constantes no topo de `pc/popup.py` (`HIDE_AFTER_S`, `POPUP_CHARS`, `CLICK_HIDE_MS`, `MARGIN`), `pc/nucleo.py` (`MAX_CHARS`) e `pc/selecao.py`:
 
 | Constante | Padrão | O que faz |
 |---|---|---|
