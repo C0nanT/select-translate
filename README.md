@@ -86,7 +86,7 @@ O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`. Para instalar
 
 **Configuração**
 
-Constantes em `android/app/src/main/java/com/conan/tradutor/Config.kt`:
+Constantes em `android/app/src/main/java/com/conan/tradutor/Config.kt` (`HIDE_AFTER_S`, `POPUP_CHARS`) e, as das regras de tradução, no núcleo em `android/nucleo/src/main/kotlin/com/conan/tradutor/Limites.kt` (`MAX_CHARS`, `MAX_URL`):
 
 | Constante | Padrão | O que faz |
 |---|---|---|

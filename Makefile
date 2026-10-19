@@ -15,9 +15,9 @@ test: test-pc test-android
 test-pc:
 	python3 -m unittest discover -s tests -v
 
-# testes unitarios do Android (Gradle, sem aparelho)
+# testes unitarios do Android (Gradle, sem aparelho): nucleo (JVM puro) + app
 test-android:
-	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew testDebugUnitTest
+	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew :nucleo:test :app:testDebugUnitTest
 
 # gera o APK debug e instala no tablet (USB, Depuracao USB ligada)
 android: android-apk
