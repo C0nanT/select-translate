@@ -1,21 +1,33 @@
-.PHONY: start test android android-apk
+.PHONY: start test test-pc test-android hooks android android-apk
 
 ANDROID_HOME ?= $(HOME)/Android/Sdk
 ADB := $(ANDROID_HOME)/platform-tools/adb
 APK := android/app/build/outputs/apk/debug/app-debug.apk
 
-# roda preso ao terminal: Ctrl+C ou fechar o terminal desliga
+# runs attached to the terminal: Ctrl+C or closing the terminal stops it
 start:
-	python3 -u tradutor.py
+	python3 -u pc/translator.py
 
-# testes unitarios do PC (sem GTK/rede)
-test:
-	python3 -m unittest discover -s tests -v
+# PC + Android
+test: test-pc test-android
 
-# gera o APK debug e instala no tablet (USB, Depuracao USB ligada)
+# PC unit tests (no GTK/network)
+test-pc:
+	python3 -m unittest discover -s pc/tests -v
+
+# Android unit tests (Gradle, no device): core (pure JVM) + app
+test-android:
+	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew :core:test :app:testDebugUnitTest
+
+# enables the pre-push hook versioned in hooks/ (once per clone; safe to repeat)
+hooks:
+	git config core.hooksPath hooks
+	chmod +x hooks/pre-push
+
+# builds the debug APK and installs it on the tablet (USB, USB debugging on)
 android: android-apk
 	$(ADB) install -r $(APK)
 
-# so gera o APK (fica em $(APK))
+# only builds the APK (lands in $(APK))
 android-apk:
 	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew assembleDebug
