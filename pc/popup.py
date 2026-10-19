@@ -1,14 +1,6 @@
-#!/usr/bin/env python3
-"""Tradutor de selecao: selecione texto em qualquer app -> popup com traducao pt-BR.
-
-Uso: python3 tradutor.py   (Ctrl+C no terminal para parar)
-"""
+"""Popup: janela GTK (adaptador de tela)."""
 import json
 import os
-import re
-import threading
-import urllib.parse
-import urllib.request
 
 import gi
 
@@ -16,10 +8,8 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk, Pango
 
-POLL_MS = 30           # arrastando mouse -> checa a cada POLL_MS se soltou o botao
 HIDE_AFTER_S = 15      # popup some sozinho (pausa com mouse em cima)
 TICK_MS = 50           # passo da barra de tempo
-MAX_CHARS = 3000
 POPUP_CHARS = 80       # largura maxima do popup, em caracteres
 CLICK_HIDE_MS = 0      # apos clicar na tela, popup some nesse tempo
 MARGIN = 8             # distancia da borda da tela
@@ -27,34 +17,6 @@ DRAG_PX = 4            # mexer menos que isso = clique (fecha), nao arrasto
 POS_FILE = os.path.expanduser("~/.config/select-translate.json")  # posicao arrastada
 BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
            | Gdk.ModifierType.BUTTON3_MASK)
-
-
-# Copia da juntarLinhas de android/.../Tradutor.kt: manter as duas iguais,
-# conferidas pelos casos compartilhados em casos/juntar_linhas.json.
-# Texto copiado de PDF traz \n em cada fim de linha (e hifen em palavra cortada);
-# junta as linhas, linha em branco continua separando paragrafos.
-def juntar_linhas(texto):
-    def hifen(m):  # dis-|tributed some o hifen; Monolith-|To fica
-        return "" if m.group(1).islower() else "-"
-
-    pars = re.split(r"\n[ \t]*\n\s*", texto.replace("\r\n", "\n"))
-    out = []
-    for par in pars:
-        par = re.sub(r"-[ \t]*\n[ \t]*(?=(.?))", hifen, par)
-        par = re.sub(r"[ \t]*\n[ \t]*", " ", par)
-        par = re.sub(r"[ \t]{2,}", " ", par)
-        out.append(par.strip())
-    return "\n\n".join(out)
-
-
-def translate(text, target="pt"):
-    url = "https://translate.googleapis.com/translate_a/single?" + urllib.parse.urlencode(
-        {"client": "gtx", "sl": "auto", "tl": target, "dt": "t", "q": text}
-    )
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=10) as r:
-        data = json.loads(r.read().decode("utf-8"))
-    return "".join(part[0] for part in data[0] if part[0])
 
 
 class Popup(Gtk.Window):
@@ -261,68 +223,5 @@ class Popup(Gtk.Window):
         self.hide()
         return False
 
-
-class App:
-    def __init__(self):
-        self.popup = Popup()
-        self.last = ""
-        self.pending = None
-        self._polling = False
-        self.cb = Gtk.Clipboard.get(Gdk.SELECTION_PRIMARY)
-        self.cb.connect("owner-change", self.on_change)
-
-    def on_change(self, *_):
-        if self.pending:
-            GLib.source_remove(self.pending)
-        self._polling = False
-        self.pending = GLib.idle_add(self.read_selection)
-
-    def read_selection(self):
-        # ainda arrastando o mouse -> espera soltar (evita traduzir pedacos)
-        if self.popup._pointer()[3] & BUTTONS:
-            if self.pending and not self._polling:
-                self._polling = True
-                self.pending = GLib.timeout_add(POLL_MS, self.read_selection)
-                return False
-            return True
-        self.pending = None
-        self._polling = False
-        self.cb.request_text(self.on_text)
-        return False
-
-    def on_text(self, _cb, text):
-        if not text:
-            return
-        text = juntar_linhas(text)  # junta quebras de linha do PDF; limite vale depois
-        if text == self.last or len(text) > MAX_CHARS or not any(c.isalpha() for c in text):
-            return
-        self.last = text
-        self.popup.show_text(text, "", state="loading")
-        threading.Thread(target=self.worker, args=(text,), daemon=True).start()
-
-    def worker(self, text):
-        try:
-            result, error = translate(text), False
-        except Exception as e:
-            result, error = f"Falha na requisição de tradução: {e}", True
-        GLib.idle_add(self.done, text, result, error)
-
-    def done(self, text, result, error):
-        # usuario clicou (fechou) durante carregamento, ou ja selecionou outra coisa
-        if not self.popup.get_visible() or text != self.last:
-            if error and text == self.last:
-                self.last = ""
-            return
-        if error:
-            self.last = ""  # permite tentar de novo com a mesma selecao
-            self.popup.show_text(text, "⚠ " + result, state="error")
-        else:
-            self.popup.show_text(text, result)
-
-
-if __name__ == "__main__":
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    App()
-    print("Tradutor ativo. Selecione texto. Ctrl+C para sair.")
-    Gtk.main()
+    def botao_apertado(self):
+        return bool(self._pointer()[3] & BUTTONS)

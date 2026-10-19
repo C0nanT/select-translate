@@ -3,9 +3,9 @@ import os
 import sys
 import unittest
 
-RAIZ = os.path.join(os.path.dirname(__file__), "..")
-sys.path.insert(0, RAIZ)
-from tradutor import juntar_linhas  # noqa: E402
+RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
+sys.path.insert(0, os.path.join(RAIZ, "pc"))
+from nucleo import juntar_linhas  # noqa: E402
 
 with open(os.path.join(RAIZ, "casos", "juntar_linhas.json"), encoding="utf-8") as f:
     CASOS = json.load(f)
