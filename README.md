@@ -1,125 +1,125 @@
 # select-translate
 
-Selecione um texto em qualquer app (leitor de PDF, navegador, etc.) e veja a tradução para pt-BR num popup fixo embaixo da tela, sem precisar copiar e colar.
+Select text in any app (PDF reader, browser, etc.) and see the pt-BR translation in a fixed popup at the bottom of the screen, without copy and paste.
 
-Feito para ler livros em inglês e só consultar a tradução quando travar numa frase.
+Made for reading English books and only checking the translation when you get stuck on a sentence.
 
-## Requisitos
+## Requirements
 
-- Linux com sessão **X11** (não funciona no Wayland)
-- Python 3 + GTK 3 (`python3-gi`), que já vêm no Ubuntu/GNOME
-- Internet (usa o endpoint gratuito do Google Tradutor)
+- Linux with an **X11** session (does not work on Wayland)
+- Python 3 + GTK 3 (`python3-gi`), already included in Ubuntu/GNOME
+- Internet access (uses the free Google Translate endpoint)
 
-## Uso
+## Usage
 
 ```bash
-make start    # liga preso ao terminal
+make start    # runs attached to the terminal
 ```
 
-Ctrl+C ou fechar o terminal desliga.
+Ctrl+C or closing the terminal stops it.
 
-Ou direto: `python3 pc/tradutor.py`.
+Or directly: `python3 pc/translator.py`.
 
-Testes: `make test` (PC + Android). Para o `git push` rodar os testes antes de enviar, ative o hook uma vez em cada clone com `make hooks`. Sem Java ou Android SDK o push é bloqueado; `git push --no-verify` pula.
+Tests: `make test` (PC + Android). To have `git push` run the tests before sending, enable the hook once per clone with `make hooks`. Without Java or the Android SDK the push is blocked; `git push --no-verify` skips the check.
 
-- Selecione o texto -> aparece "Traduzindo…" e depois a tradução
-- Clique em qualquer lugar -> o popup fecha
-- Segure e arraste o popup para mudar de lugar; os próximos abrem ali (fica salvo em `~/.config/select-translate.json`; apague o arquivo para voltar ao padrão)
-- Se a requisição falhar, o popup fica vermelho com o motivo
+- Select the text -> "Traduzindo…" appears, then the translation
+- Click anywhere -> the popup closes
+- Hold and drag the popup to move it; the next ones open there (saved in `~/.config/select-translate.json`; delete the file to go back to the default)
+- If the request fails, the popup turns red with the reason
 
-Enquanto estiver rodando, **qualquer** texto selecionado é enviado ao Google Tradutor.
+While it is running, **any** selected text is sent to Google Translate.
 
-## Configuração
+## Configuration
 
-Constantes no topo de `pc/popup.py` (`HIDE_AFTER_S`, `POPUP_CHARS`, `CLICK_HIDE_MS`, `MARGIN`), `pc/nucleo.py` (`MAX_CHARS`) e `pc/selecao.py` (`POLL_MS`):
+Constants at the top of `pc/popup.py` (`HIDE_AFTER_S`, `POPUP_CHARS`, `CLICK_HIDE_MS`, `MARGIN`), `pc/core.py` (`MAX_CHARS`) and `pc/selection.py` (`POLL_MS`):
 
-| Constante | Padrão | O que faz |
+| Constant | Default | What it does |
 |---|---|---|
-| `POLL_MS` | 30 | enquanto o mouse está apertado, checa a cada tanto se ele já foi solto (só então traduz) |
-| `HIDE_AFTER_S` | 15 | o popup some sozinho depois desse tempo |
-| `MAX_CHARS` | 3000 | ignora seleções maiores que isso |
-| `POPUP_CHARS` | 80 | largura máxima do popup, em caracteres |
-| `CLICK_HIDE_MS` | 0 | atraso para fechar depois de um clique |
-| `MARGIN` | 8 | distância do popup até a borda da tela |
+| `POLL_MS` | 30 | while the mouse button is down, checks every so often whether it has been released (only then translates) |
+| `HIDE_AFTER_S` | 15 | the popup hides by itself after this time |
+| `MAX_CHARS` | 3000 | ignores selections larger than this |
+| `POPUP_CHARS` | 80 | maximum popup width, in characters |
+| `CLICK_HIDE_MS` | 0 | delay before closing after a click |
+| `MARGIN` | 8 | distance from the popup to the screen edge |
 
 ## Android (tablet)
 
-App em `android/` com duas formas de traduzir; as duas abrem o mesmo popup embaixo da tela, por cima do app:
+App in `android/` with two ways to translate; both open the same popup at the bottom of the screen, over the app:
 
-- **Bolha flutuante** (funciona em qualquer leitor, inclusive o visualizador de PDF do Files by Google): copie o texto e toque na bolha **文**.
-- **Item "Traduzir pt-BR"** no menu da seleção, nos apps que mostram itens de outros apps nesse menu.
+- **Floating bubble** (works in any reader, including the Files by Google PDF viewer): copy the text and tap the bubble **文**.
+- **"Traduzir pt-BR" item** in the selection menu, in apps that show items from other apps in that menu.
 
-Testado num Lenovo TB336FU com Android 16, lendo PDF no Files by Google.
+Tested on a Lenovo TB336FU with Android 16, reading a PDF in Files by Google.
 
-**Requisitos**
+**Requirements**
 
 - Android 6+
-- Depuração USB ligada (só para `make android`)
-- Android SDK em `~/Android/Sdk` (ou `ANDROID_HOME`) e Java 17+
+- USB debugging on (only for `make android`)
+- Android SDK at `~/Android/Sdk` (or `ANDROID_HOME`) and Java 17+
 
 ```bash
-make android      # gera o APK debug e instala no tablet via USB
-make android-apk  # só gera o APK
+make android      # builds the debug APK and installs it on the tablet via USB
+make android-apk  # only builds the APK
 ```
 
-O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`. Para instalar à mão, copie o arquivo para o tablet, abra-o no gerenciador de arquivos e permita instalar de fonte desconhecida.
+The APK is at `android/app/build/outputs/apk/debug/app-debug.apk`. To install it by hand, copy the file to the tablet, open it in the file manager and allow installing from unknown sources.
 
-**Bolha**
+**Bubble**
 
-- Ligar: toque no ícone **Tradutor** na lista de apps. Na primeira vez ele abre a tela de "Sobrepor a outros apps": ative para o Tradutor e toque no ícone de novo
-- No Android 13+, ao ligar a bolha o app pede permissão de notificação (para mostrar "Toque para desligar"); negar não impede a bolha
-- Desligar: segure o dedo parado sobre a bolha até vibrar, ou toque na notificação "Bolha do Tradutor ligada"
-- Toque curto traduz; arraste a bolha para mudar de lugar (passou do limiar de toque do sistema, não traduz nem desliga)
-- A bolha lembra onde foi deixada: ao ligar de novo volta para o último lugar, ajustada à tela (também depois de girar ou trocar de aparelho)
-- Ao reiniciar o tablet, a bolha não volta sozinha: toque no ícone de novo
-- O Android avisa "Tradutor colou da área de transferência" a cada tradução; é esperado
+- Turn on: tap the **Tradutor** icon in the app list. The first time, it opens the "Sobrepor a outros apps" screen: enable it for Tradutor and tap the icon again
+- On Android 13+, when you turn the bubble on the app asks for notification permission (to show "Toque para desligar"); denying it does not prevent the bubble from working
+- Turn off: hold your finger still on the bubble until it vibrates, or tap the "Bolha do Tradutor ligada" notification
+- Short tap translates; drag the bubble to move it (past the system touch slop, it neither translates nor turns off)
+- The bubble remembers where it was left: when turned on again it returns to the last place, adjusted to the screen (also after rotating or switching devices)
+- After the tablet restarts, the bubble does not come back on its own: tap the icon again
+- Android shows "Tradutor colou da área de transferência" on every translation; this is expected
 
-**Uso**
+**Usage**
 
-- Copie o texto e toque na bolha (ou selecione e toque em "Traduzir pt-BR" no menu) -> aparece "Traduzindo…" e depois a tradução
-- Some sozinho em 15 s; a barra embaixo mostra o tempo restante
-- Segurar o dedo sobre o popup pausa o tempo
-- Segure parado até vibrar e arraste para mudar o popup de lugar; os próximos abrem ali (arrastar sem segurar rola o texto)
-- Toque fora -> o popup fecha
-- Falha na requisição -> popup vermelho com o motivo
-- Texto acima de 3000 caracteres -> aviso "Texto grande demais (N caracteres)"
+- Copy the text and tap the bubble (or select and tap "Traduzir pt-BR" in the menu) -> "Traduzindo…" appears, then the translation
+- Hides by itself in 15 s; the bar at the bottom shows the remaining time
+- Holding a finger on the popup pauses the time
+- Hold still until it vibrates, then drag to move the popup; the next ones open there (dragging without holding scrolls the text)
+- Tap outside -> the popup closes
+- Request failure -> red popup with the reason
+- Text over 3000 characters -> "Texto grande demais (N caracteres)" warning
 
-**Leitores de PDF:** o visualizador de PDF do Files by Google tem menu de seleção próprio (só "Copiar" e "Selecionar tudo"), então "Traduzir pt-BR" não aparece nele: use a bolha. No navegador o item também não apareceu no primeiro teste; ainda não investigado.
+**PDF readers:** the Files by Google PDF viewer has its own selection menu (only "Copiar" and "Selecionar tudo"), so "Traduzir pt-BR" does not appear there: use the bubble. In the browser the item also did not appear in the first test; not investigated yet.
 
-**Configuração**
+**Configuration**
 
-Constantes em `android/app/src/main/java/com/conan/tradutor/Config.kt` (`HIDE_AFTER_S`, `POPUP_CHARS`) e, as das regras de tradução, no núcleo em `android/nucleo/src/main/kotlin/com/conan/tradutor/Limites.kt` (`MAX_CHARS`, `MAX_URL`):
+Constants in `android/app/src/main/java/com/conan/translator/Config.kt` (`HIDE_AFTER_S`, `POPUP_CHARS`) and, for the translation rules, in the core at `android/core/src/main/kotlin/com/conan/translator/Limits.kt` (`MAX_CHARS`, `MAX_URL`):
 
-| Constante | Padrão | O que faz |
+| Constant | Default | What it does |
 |---|---|---|
-| `HIDE_AFTER_S` | 15 | o popup some sozinho depois desse tempo |
-| `MAX_CHARS` | 3000 | seleções maiores que isso (contadas por code point: emoji conta 1) mostram o aviso "Texto grande demais" |
-| `MAX_URL` | 8000 | teto da URL já codificada (acentos e emoji incham); acima disso mostra o mesmo aviso. Valor conservador, ainda não medido no aparelho |
-| `POPUP_CHARS` | 80 | largura máxima do popup, em caracteres |
+| `HIDE_AFTER_S` | 15 | the popup hides by itself after this time |
+| `MAX_CHARS` | 3000 | selections larger than this (counted by code point: an emoji counts as 1) show the "Texto grande demais" warning |
+| `MAX_URL` | 8000 | cap on the already-encoded URL (accents and emoji inflate it); above it, shows the same warning. Conservative value, not yet measured on the device |
+| `POPUP_CHARS` | 80 | maximum popup width, in characters |
 
-Avisos do popup vermelho ao tocar na bolha: "Nada copiado" (área de transferência vazia, com imagem/arquivo ou com leitura bloqueada) e "Nada para traduzir" (texto sem nenhuma letra, como "42"; nenhuma requisição é feita). Pelo menu "Traduzir pt-BR", esses casos fecham sem mostrar nada.
+Warnings in the red popup when tapping the bubble: "Nada copiado" (clipboard empty, holding an image/file, or reading blocked) and "Nada para traduzir" (text with no letters, such as "42"; no request is made). From the "Traduzir pt-BR" menu, these cases close without showing anything.
 
-Depois de mudar, rode `make android`.
+After changing these, run `make android`.
 
-**Privacidade:** o texto só é enviado ao Google Tradutor quando você toca na bolha ou em "Traduzir pt-BR", não a cada seleção ou cópia.
+**Privacy:** text is only sent to Google Translate when you tap the bubble or "Traduzir pt-BR", not on every selection or copy.
 
-## Desenvolvimento
+## Development
 
-As regras de tradução existem em duas versões, uma por plataforma, organizadas assim:
+The translation rules exist in two versions, one per platform, organized like this:
 
-- **Núcleo**: regras puras, sem tela e sem rede, uma cópia por linguagem: `pc/nucleo.py` (Python) e `android/nucleo/` (Kotlin, módulo Gradle sem Android).
-- **Adaptadores**: o que é próprio de cada plataforma. No PC: `pc/selecao.py` (seleção do X11), `pc/popup.py` (janela GTK), `pc/rede.py` (HTTP) e `pc/tradutor.py` (liga tudo). No Android: `android/app/` (bolha, popup, bloco das Configurações rápidas, menu de seleção e HTTP).
-- **`casos/`**: arquivos JSON com entrada → saída esperada. Os testes do PC e do Android leem os mesmos arquivos, então são a fonte única do comportamento: se um lado mudar sem o outro, o teste quebra.
+- **Core**: pure rules, no UI and no network, one copy per language: `pc/core.py` (Python) and `android/core/` (Kotlin, a Gradle module without Android).
+- **Adapters**: what is specific to each platform. On PC: `pc/selection.py` (X11 selection), `pc/popup.py` (GTK window), `pc/network.py` (HTTP) and `pc/translator.py` (wires everything together). On Android: `android/app/` (bubble, popup, Quick Settings tile, selection menu and HTTP).
+- **`cases/`**: JSON files with input -> expected output. The PC and Android tests read the same files, so they are the single source of truth for behavior: if one side changes without the other, the test breaks.
 
-**Regra: mudou o comportamento → mude o caso primeiro.** Escreva ou ajuste o caso em `casos/` e só depois o código das duas linguagens. O cronômetro e o ajuste de posição não usam `casos/`: têm testes diretos em cada linguagem.
+**Rule: when behavior changes, change the case first.** Write or adjust the case in `cases/` and only then the code in both languages. The stopwatch and position clamping do not use `cases/`: they have direct tests in each language.
 
-| Comando | O que faz |
+| Command | What it does |
 |---|---|
-| `make test` | testes do PC e do Android |
-| `make test-pc` | só os testes do PC |
-| `make test-android` | só os testes do Android (núcleo e app, via Gradle) |
-| `make hooks` | ativa o pre-push versionado em `hooks/`, que roda `make test` antes de cada `git push`. Rode uma vez em cada clone; repetir é seguro |
+| `make test` | PC and Android tests |
+| `make test-pc` | PC tests only |
+| `make test-android` | Android tests only (core and app, via Gradle) |
+| `make hooks` | enables the pre-push hook versioned in `hooks/`, which runs `make test` before each `git push`. Run once per clone; repeating it is safe |
 
-Sem Java ou Android SDK o push é bloqueado com uma mensagem clara; `git push --no-verify` pula a checagem.
+Without Java or the Android SDK the push is blocked with a clear message; `git push --no-verify` skips the check.
 
-**Por que duas linguagens:** unificar (Kotlin nos dois, ou outra linguagem) foi avaliado e adiado. O núcleo é pequeno (~100 linhas) e a troca exigiria Java + JNA no PC. Reavaliar se o núcleo crescer (vários serviços de tradução, escolha de idioma, histórico).
+**Why two languages:** unifying (Kotlin on both sides, or another language) was evaluated and postponed. The core is small (~100 lines) and switching would require Java + JNA on the PC. Reevaluate if the core grows (multiple translation services, language choice, history).
