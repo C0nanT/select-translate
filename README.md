@@ -20,6 +20,8 @@ Ctrl+C ou fechar o terminal desliga.
 
 Ou direto: `python3 tradutor.py`.
 
+Testes: `make test` (PC + Android). Para o `git push` rodar os testes antes de enviar, ative o hook uma vez em cada clone com `make hooks`. Sem Java ou Android SDK o push é bloqueado; `git push --no-verify` pula.
+
 - Selecione o texto -> aparece "Traduzindo…" e depois a tradução
 - Clique em qualquer lugar -> o popup fecha
 - Segure e arraste o popup para mudar de lugar; os próximos abrem ali (fica salvo em `~/.config/select-translate.json`; apague o arquivo para voltar ao padrão)

@@ -1,4 +1,4 @@
-.PHONY: start test test-pc test-android android android-apk
+.PHONY: start test test-pc test-android hooks android android-apk
 
 ANDROID_HOME ?= $(HOME)/Android/Sdk
 ADB := $(ANDROID_HOME)/platform-tools/adb
@@ -18,6 +18,11 @@ test-pc:
 # testes unitarios do Android (Gradle, sem aparelho)
 test-android:
 	cd android && ANDROID_HOME=$(ANDROID_HOME) ./gradlew testDebugUnitTest
+
+# ativa o pre-push versionado em hooks/ (uma vez por clone; repetir e seguro)
+hooks:
+	git config core.hooksPath hooks
+	chmod +x hooks/pre-push
 
 # gera o APK debug e instala no tablet (USB, Depuracao USB ligada)
 android: android-apk
