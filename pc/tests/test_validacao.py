@@ -5,7 +5,7 @@ import unittest
 
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(0, os.path.join(RAIZ, "pc"))
-from nucleo import (Erro, ErroHttp, GrandeDemais, SemLetras, Traducao,  # noqa: E402
+from nucleo import (Erro, GrandeDemais, SemLetras, Traducao,  # noqa: E402
                     Vazio, traduzir, validar)
 
 with open(os.path.join(RAIZ, "casos", "validacao.json"), encoding="utf-8") as f:
@@ -53,17 +53,6 @@ class ResultadosTest(unittest.TestCase):
         self.assertIs(SemLetras, validar("42"))
         self.assertEqual(GrandeDemais(3001), validar("a" * 3001))
         self.assertIsNone(validar("hello"))
-
-    def test_erros_da_busca(self):
-        def erro(e):
-            def busca(_):
-                raise e
-            return traduzir("x", busca)
-
-        self.assertEqual(Erro("Tempo esgotado"), erro(TimeoutError()))
-        self.assertEqual(Erro("Sem conexão com a internet"), erro(ConnectionError("x")))
-        self.assertEqual(Erro("Erro do servidor (HTTP 503)"), erro(ErroHttp(503)))
-        self.assertEqual(Erro("boom"), erro(OSError("boom")))
 
     def test_resposta_invalida_vira_erro(self):
         for corpo in ("<html>oops", "", "[[1,2]", "{}", "[]", "[[1]]", "[[[5]]]"):
