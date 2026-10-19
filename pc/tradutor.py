@@ -14,7 +14,7 @@ import gi  # noqa: E402
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
-from nucleo import Erro, GrandeDemais, Traducao, juntar_linhas, traduzir, validar  # noqa: E402
+from nucleo import GrandeDemais, Traducao, juntar_linhas, traduzir, validar  # noqa: E402
 from popup import Popup  # noqa: E402
 from rede import busca  # noqa: E402
 from selecao import Selecao  # noqa: E402
@@ -47,10 +47,8 @@ class App:
             result, error = r.texto, False
         elif isinstance(r, GrandeDemais):  # URL grande demais depois de codificada
             result, error = "⚠ " + r.mensagem, True
-        elif isinstance(r, Erro):
+        else:  # Erro (Vazio/SemLetras ja filtrados em on_text)
             result, error = "⚠ " + r.motivo, True
-        else:  # Vazio/SemLetras ja filtrados em on_text
-            result, error = "⚠ Nada para traduzir", True
         GLib.idle_add(self.done, text, result, error)
 
     def done(self, text, result, error):

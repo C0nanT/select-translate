@@ -1,14 +1,13 @@
-import json
 import os
 import sys
 import unittest
 
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(0, os.path.join(RAIZ, "pc"))
+from casos import carregar  # noqa: E402
 from nucleo import Erro, Traducao, traduzir  # noqa: E402
 
-with open(os.path.join(RAIZ, "casos", "resposta_google.json"), encoding="utf-8") as f:
-    CASOS = json.load(f)
+CASOS = carregar("resposta_google.json")
 
 
 # os casos moram em casos/resposta_google.json e valem tambem para o Android (RespostaGoogleTest.kt)

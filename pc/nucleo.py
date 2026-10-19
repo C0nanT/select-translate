@@ -10,7 +10,7 @@ MAX_URL = 8000
 IDIOMA_DESTINO = "pt"
 
 
-# Copia da juntarLinhas de android/.../Tradutor.kt: manter as duas iguais,
+# Copia da juntarLinhas de android/nucleo/src/main/kotlin/com/conan/tradutor/Tradutor.kt: manter as duas iguais,
 # conferidas pelos casos compartilhados em casos/juntar_linhas.json.
 # Texto copiado de PDF traz \n em cada fim de linha (e hifen em palavra cortada);
 # junta as linhas, linha em branco continua separando paragrafos.

@@ -5,11 +5,11 @@ import unittest
 
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(0, os.path.join(RAIZ, "pc"))
+from casos import carregar  # noqa: E402
 from nucleo import (Erro, GrandeDemais, SemLetras, Traducao,  # noqa: E402
                     Vazio, traduzir, validar)
 
-with open(os.path.join(RAIZ, "casos", "validacao.json"), encoding="utf-8") as f:
-    CASOS = json.load(f)
+CASOS = carregar("validacao.json")
 
 BASE = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=pt&dt=t&q="
 
