@@ -29,7 +29,8 @@ BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
            | Gdk.ModifierType.BUTTON3_MASK)
 
 
-# Copia da juntarLinhas de android/.../Tradutor.kt: manter as duas iguais.
+# Copia da juntarLinhas de android/.../Tradutor.kt: manter as duas iguais,
+# conferidas pelos casos compartilhados em casos/juntar_linhas.json.
 # Texto copiado de PDF traz \n em cada fim de linha (e hifen em palavra cortada);
 # junta as linhas, linha em branco continua separando paragrafos.
 def juntar_linhas(texto):
