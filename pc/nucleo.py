@@ -28,71 +28,71 @@ def juntar_linhas(texto):
     return "\n\n".join(out)
 
 
-# Copia do Cronometro.kt: tempo restante do popup. Sem relogio: o "agora" (ms)
-# vem em cada chamada. Estados: parado (carregando), correndo, pausado (mouse em cima).
-class Cronometro:
+# Copy of Stopwatch.kt: time left on the popup. No clock: the "now" (ms)
+# comes in on each call. States: idle (loading), running, paused (mouse over).
+class Stopwatch:
     def __init__(self, total_ms):
         self.total_ms = total_ms
-        self.restante_ms = total_ms
-        self.iniciado = False
-        self._pausado = False
-        self._ultimo = 0
+        self.remaining_ms = total_ms
+        self.started = False
+        self._paused = False
+        self._last = 0
 
     @property
-    def acabou(self):
-        return self.iniciado and self.restante_ms <= 0
+    def finished(self):
+        return self.started and self.remaining_ms <= 0
 
     @property
-    def fracao(self):
-        return min(1.0, max(0.0, self.restante_ms / self.total_ms))
+    def fraction(self):
+        return min(1.0, max(0.0, self.remaining_ms / self.total_ms))
 
-    def iniciar(self, agora):
-        # tempo cheio; se pausado, so corre ao retomar
-        self.restante_ms = self.total_ms
-        self.iniciado = True
-        self._ultimo = agora
+    def start(self, now):
+        # full time; if paused, it only runs on resume
+        self.remaining_ms = self.total_ms
+        self.started = True
+        self._last = now
 
-    def parar(self):
-        # volta a "carregando"; a pausa continua valendo
-        self.restante_ms = self.total_ms
-        self.iniciado = False
+    def stop(self):
+        # back to "loading"; the pause still applies
+        self.remaining_ms = self.total_ms
+        self.started = False
 
-    def pausar(self, agora):
-        self.descontar(agora)
-        self._pausado = True
+    def pause(self, now):
+        self.elapse(now)
+        self._paused = True
 
-    def retomar(self, agora):
-        if not self._pausado:
+    def resume(self, now):
+        if not self._paused:
             return
-        self._pausado = False
-        self._ultimo = agora
+        self._paused = False
+        self._last = now
 
-    def descontar(self, agora):
-        if self.iniciado and not self._pausado:
-            self.restante_ms = max(0, self.restante_ms - (agora - self._ultimo))
-            self._ultimo = agora
-        return self.restante_ms
-
-
-Tamanho = namedtuple("Tamanho", "largura altura")
-Pos = namedtuple("Pos", "x y")
+    def elapse(self, now):
+        if self.started and not self._paused:
+            self.remaining_ms = max(0, self.remaining_ms - (now - self._last))
+            self._last = now
+        return self.remaining_ms
 
 
-def _limitar(v, lo, hi):
+Size = namedtuple("Size", "width height")
+Position = namedtuple("Position", "x y")
+
+
+def _limit(v, lo, hi):
     return max(lo, min(v, hi))
 
 
-# Copia da ajustarPosicao de Posicao.kt: mantem a janela dentro da tela.
-# centrada_x=False: x e a distancia da borda esquerda; True: desvio do centro.
-# y vai de 0 a (tela - janela).
-def ajustar_posicao(pos, tela, janela, centrada_x):
-    sobra_x = max(0, tela.largura - janela.largura)
-    if centrada_x:
-        x = _limitar(pos.x, -(sobra_x // 2), sobra_x // 2)
+# Copy of clampPosition in Position.kt: keeps the window inside the screen.
+# centered_x=False: x is the distance from the left edge; True: offset from the center.
+# y goes from 0 to (screen - window).
+def clamp_position(pos, screen, window, centered_x):
+    slack_x = max(0, screen.width - window.width)
+    if centered_x:
+        x = _limit(pos.x, -(slack_x // 2), slack_x // 2)
     else:
-        x = _limitar(pos.x, 0, sobra_x)
-    y = _limitar(pos.y, 0, max(0, tela.altura - janela.altura))
-    return Pos(x, y)
+        x = _limit(pos.x, 0, slack_x)
+    y = _limit(pos.y, 0, max(0, screen.height - window.height))
+    return Position(x, y)
 
 
 # --- traduzir: validacao + URL + resposta, com a busca HTTP vinda de fora ---

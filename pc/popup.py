@@ -9,7 +9,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk, Pango
 
-from nucleo import Cronometro, Pos, Tamanho, ajustar_posicao
+from nucleo import Stopwatch, Position, Size, clamp_position
 
 HIDE_AFTER_S = 15      # popup some sozinho (pausa com mouse em cima)
 TICK_MS = 50           # passo da barra de tempo
@@ -87,7 +87,7 @@ class Popup(Gtk.Window):
         frame.add(box)
         self.add(frame)
         self._hide_id = None
-        self._cron = Cronometro(HIDE_AFTER_S * 1000)
+        self._stopwatch = Stopwatch(HIDE_AFTER_S * 1000)
 
     def show_text(self, original, translated, state=None):
         """state: None (traducao), "loading" ou "error" -> classe CSS."""
@@ -127,15 +127,15 @@ class Popup(Gtk.Window):
             area = self._workarea(px, py)
             cx, bottom = area.x + area.width // 2, area.y + area.height - MARGIN
         # sem sair da tela (monitor mudou, popup mais alto...)
-        util = Tamanho(area.width - 2 * MARGIN, area.height - 2 * MARGIN)
-        p = ajustar_posicao(Pos(cx - w // 2 - area.x - MARGIN, bottom - h - area.y - MARGIN),
-                            util, Tamanho(w, h), centrada_x=False)
+        util = Size(area.width - 2 * MARGIN, area.height - 2 * MARGIN)
+        p = clamp_position(Position(cx - w // 2 - area.x - MARGIN, bottom - h - area.y - MARGIN),
+                            util, Size(w, h), centered_x=False)
         x, y = area.x + MARGIN + p.x, area.y + MARGIN + p.y
         self.move(x, y)
         self.show()
 
         self._cancel_timers()
-        self._cron.iniciar(_agora_ms())
+        self._stopwatch.start(_agora_ms())
         self._hide_id = GLib.timeout_add(TICK_MS, self._tick)
         self._was_pressed = self._pointer()[3] & BUTTONS
         self._poll_id = GLib.timeout_add(100, self._watch_click)
@@ -202,11 +202,11 @@ class Popup(Gtk.Window):
     def _tick(self):
         # mouse em cima -> tempo congela
         agora = _agora_ms()
-        (self._cron.pausar if self._hovered() else self._cron.retomar)(agora)
-        self._cron.descontar(agora)
-        if self._cron.acabou:
+        (self._stopwatch.pause if self._hovered() else self._stopwatch.retomar)(agora)
+        self._stopwatch.elapse(agora)
+        if self._stopwatch.finished:
             return self._auto_hide()
-        self.bar.set_fraction(self._cron.fracao)
+        self.bar.set_fraction(self._stopwatch.fraction)
         return True
 
     def _watch_click(self):
