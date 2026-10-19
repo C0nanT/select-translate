@@ -31,11 +31,11 @@ Enquanto estiver rodando, **qualquer** texto selecionado é enviado ao Google Tr
 
 ## Configuração
 
-Constantes no topo de `pc/popup.py` (`HIDE_AFTER_S`, `POPUP_CHARS`, `CLICK_HIDE_MS`, `MARGIN`), `pc/nucleo.py` (`MAX_CHARS`) e `pc/selecao.py`:
+Constantes no topo de `pc/popup.py` (`HIDE_AFTER_S`, `POPUP_CHARS`, `CLICK_HIDE_MS`, `MARGIN`), `pc/nucleo.py` (`MAX_CHARS`) e `pc/selecao.py` (`POLL_MS`):
 
 | Constante | Padrão | O que faz |
 |---|---|---|
-| `DEBOUNCE_MS` | 500 | espera a seleção terminar antes de traduzir |
+| `POLL_MS` | 30 | enquanto o mouse está apertado, checa a cada tanto se ele já foi solto (só então traduz) |
 | `HIDE_AFTER_S` | 15 | o popup some sozinho depois desse tempo |
 | `MAX_CHARS` | 3000 | ignora seleções maiores que isso |
 | `POPUP_CHARS` | 80 | largura máxima do popup, em caracteres |
@@ -102,3 +102,24 @@ Avisos do popup vermelho ao tocar na bolha: "Nada copiado" (área de transferên
 Depois de mudar, rode `make android`.
 
 **Privacidade:** o texto só é enviado ao Google Tradutor quando você toca na bolha ou em "Traduzir pt-BR", não a cada seleção ou cópia.
+
+## Desenvolvimento
+
+As regras de tradução existem em duas versões, uma por plataforma, organizadas assim:
+
+- **Núcleo**: regras puras, sem tela e sem rede, uma cópia por linguagem: `pc/nucleo.py` (Python) e `android/nucleo/` (Kotlin, módulo Gradle sem Android).
+- **Adaptadores**: o que é próprio de cada plataforma. No PC: `pc/selecao.py` (seleção do X11), `pc/popup.py` (janela GTK), `pc/rede.py` (HTTP) e `pc/tradutor.py` (liga tudo). No Android: `android/app/` (bolha, popup, bloco das Configurações rápidas, menu de seleção e HTTP).
+- **`casos/`**: arquivos JSON com entrada → saída esperada. Os testes do PC e do Android leem os mesmos arquivos, então são a fonte única do comportamento: se um lado mudar sem o outro, o teste quebra.
+
+**Regra: mudou o comportamento → mude o caso primeiro.** Escreva ou ajuste o caso em `casos/` e só depois o código das duas linguagens. O cronômetro e o ajuste de posição não usam `casos/`: têm testes diretos em cada linguagem.
+
+| Comando | O que faz |
+|---|---|
+| `make test` | testes do PC e do Android |
+| `make test-pc` | só os testes do PC |
+| `make test-android` | só os testes do Android (núcleo e app, via Gradle) |
+| `make hooks` | ativa o pre-push versionado em `hooks/`, que roda `make test` antes de cada `git push`. Rode uma vez em cada clone; repetir é seguro |
+
+Sem Java ou Android SDK o push é bloqueado com uma mensagem clara; `git push --no-verify` pula a checagem.
+
+**Por que duas linguagens:** unificar (Kotlin nos dois, ou outra linguagem) foi avaliado e adiado. O núcleo é pequeno (~100 linhas) e a troca exigiria Java + JNA no PC. Reavaliar se o núcleo crescer (vários serviços de tradução, escolha de idioma, histórico).
