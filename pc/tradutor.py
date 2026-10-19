@@ -48,7 +48,7 @@ class App:
         elif isinstance(r, GrandeDemais):  # URL grande demais depois de codificada
             result, error = "⚠ " + r.mensagem, True
         elif isinstance(r, Erro):
-            result, error = "⚠ Falha na requisição de tradução: " + r.motivo, True
+            result, error = "⚠ " + r.motivo, True
         else:  # Vazio/SemLetras ja filtrados em on_text
             result, error = "⚠ Nada para traduzir", True
         GLib.idle_add(self.done, text, result, error)

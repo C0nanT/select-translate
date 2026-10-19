@@ -1,7 +1,6 @@
 """Nucleo: regras puras, sem GTK e sem rede."""
 import json
 import re
-import socket
 import urllib.parse
 from collections import namedtuple
 
@@ -118,11 +117,41 @@ class GrandeDemais(namedtuple("GrandeDemais", "n")):
         return f"Texto grande demais ({self.n} caracteres)"
 
 
-# a busca lanca isto em resposta HTTP diferente de 200
-class ErroHttp(Exception):
-    def __init__(self, codigo):
-        super().__init__(f"HTTP {codigo}")
+# Contrato entre o adaptador de rede e o nucleo (igual a ErroRede em Tradutor.kt):
+# a busca lanca ErroRede; o adaptador converte as excecoes da plataforma (ver rede.py).
+# tipo: "tempo_esgotado", "sem_conexao", "http" (+ codigo) ou "outro" (+ detalhe).
+class ErroRede(Exception):
+    def __init__(self, tipo, codigo=None, detalhe=None):
+        super().__init__(tipo)
+        self.tipo = tipo
         self.codigo = codigo
+        self.detalhe = detalhe
+
+    @classmethod
+    def tempo_esgotado(cls):
+        return cls("tempo_esgotado")
+
+    @classmethod
+    def sem_conexao(cls):
+        return cls("sem_conexao")
+
+    @classmethod
+    def http(cls, codigo):
+        return cls("http", codigo=codigo)
+
+    @classmethod
+    def outro(cls, detalhe):
+        return cls("outro", detalhe=detalhe)
+
+    @property
+    def mensagem(self):  # unico lugar das mensagens de erro de rede
+        if self.tipo == "tempo_esgotado":
+            return "Tempo esgotado"
+        if self.tipo == "sem_conexao":
+            return "Sem conexão com a internet"
+        if self.tipo == "http":
+            return f"Erro do servidor (HTTP {self.codigo})"
+        return self.detalhe
 
 
 def url_traducao(texto):
@@ -146,13 +175,9 @@ def validar(texto):
 
 
 def _motivo(e):
-    if isinstance(e, ErroHttp):
-        return f"Erro do servidor (HTTP {e.codigo})"
-    if isinstance(e, TimeoutError):
-        return "Tempo esgotado"
-    if isinstance(e, (ConnectionError, socket.gaierror)):
-        return "Sem conexão com a internet"
-    return str(e) or type(e).__name__
+    if isinstance(e, ErroRede):
+        return e.mensagem
+    return str(e) or type(e).__name__  # excecao fora do contrato: trata como "outro"
 
 
 def _extrair(corpo):
@@ -172,7 +197,7 @@ def _extrair(corpo):
 
 
 def traduzir(bruto, busca):
-    """busca(url) -> corpo (str); lanca excecao em falha de rede (ErroHttp, TimeoutError, ...)."""
+    """busca(url) -> corpo (str); lanca excecao em falha de rede (ErroRede)."""
     texto = juntar_linhas(bruto)
     invalido = validar(texto)
     if invalido is not None:
