@@ -1,12 +1,15 @@
 """Popup: janela GTK (adaptador de tela)."""
 import json
 import os
+import time
 
 import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk, Pango
+
+from nucleo import Cronometro, Pos, Tamanho, ajustar_posicao
 
 HIDE_AFTER_S = 15      # popup some sozinho (pausa com mouse em cima)
 TICK_MS = 50           # passo da barra de tempo
@@ -17,6 +20,10 @@ DRAG_PX = 4            # mexer menos que isso = clique (fecha), nao arrasto
 POS_FILE = os.path.expanduser("~/.config/select-translate.json")  # posicao arrastada
 BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
            | Gdk.ModifierType.BUTTON3_MASK)
+
+
+def _agora_ms():
+    return int(time.monotonic() * 1000)
 
 
 class Popup(Gtk.Window):
@@ -80,6 +87,7 @@ class Popup(Gtk.Window):
         frame.add(box)
         self.add(frame)
         self._hide_id = None
+        self._cron = Cronometro(HIDE_AFTER_S * 1000)
 
     def show_text(self, original, translated, state=None):
         """state: None (traducao), "loading" ou "error" -> classe CSS."""
@@ -119,13 +127,15 @@ class Popup(Gtk.Window):
             area = self._workarea(px, py)
             cx, bottom = area.x + area.width // 2, area.y + area.height - MARGIN
         # sem sair da tela (monitor mudou, popup mais alto...)
-        x = min(max(cx - w // 2, area.x + MARGIN), area.x + area.width - w - MARGIN)
-        y = min(max(bottom - h, area.y + MARGIN), area.y + area.height - h - MARGIN)
+        util = Tamanho(area.width - 2 * MARGIN, area.height - 2 * MARGIN)
+        p = ajustar_posicao(Pos(cx - w // 2 - area.x - MARGIN, bottom - h - area.y - MARGIN),
+                            util, Tamanho(w, h), centrada_x=False)
+        x, y = area.x + MARGIN + p.x, area.y + MARGIN + p.y
         self.move(x, y)
         self.show()
 
         self._cancel_timers()
-        self._left_ms = HIDE_AFTER_S * 1000
+        self._cron.iniciar(_agora_ms())
         self._hide_id = GLib.timeout_add(TICK_MS, self._tick)
         self._was_pressed = self._pointer()[3] & BUTTONS
         self._poll_id = GLib.timeout_add(100, self._watch_click)
@@ -191,12 +201,12 @@ class Popup(Gtk.Window):
 
     def _tick(self):
         # mouse em cima -> tempo congela
-        if self._hovered():
-            return True
-        self._left_ms -= TICK_MS
-        if self._left_ms <= 0:
+        agora = _agora_ms()
+        (self._cron.pausar if self._hovered() else self._cron.retomar)(agora)
+        self._cron.descontar(agora)
+        if self._cron.acabou:
             return self._auto_hide()
-        self.bar.set_fraction(self._left_ms / (HIDE_AFTER_S * 1000))
+        self.bar.set_fraction(self._cron.fracao)
         return True
 
     def _watch_click(self):
