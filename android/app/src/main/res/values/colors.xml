@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- same blue as the bubble (accentColor, light theme) -->
-    <color name="bubble">#1A73E8</color>
-</resources>
