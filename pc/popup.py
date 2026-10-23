@@ -17,7 +17,7 @@ POPUP_CHARS = 80       # max popup width, in characters
 CLICK_HIDE_MS = 0      # after a click on the screen, the popup hides within this time
 MARGIN = 8             # distance from the screen edge
 DRAG_PX = 4            # moving less than this = click (closes), not a drag
-POS_FILE = os.path.expanduser("~/.config/select-translate.json")  # dragged position
+POS_FILE = os.path.expanduser("~/.config/translate-selected.json")  # dragged position
 BUTTONS = (Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON2_MASK
            | Gdk.ModifierType.BUTTON3_MASK)
 

@@ -1,4 +1,4 @@
-# select-translate
+# translate-selected
 
 Select text in any app (PDF reader, browser, etc.) and see the pt-BR translation in a fixed popup at the bottom of the screen, without copy and paste.
 
@@ -24,7 +24,7 @@ Tests: `make test` (PC + Android). To have `git push` run the tests before sendi
 
 - Select the text -> "Traduzindo…" appears, then the translation
 - Click anywhere -> the popup closes
-- Hold and drag the popup to move it; the next ones open there (saved in `~/.config/select-translate.json`; delete the file to go back to the default)
+- Hold and drag the popup to move it; the next ones open there (saved in `~/.config/translate-selected.json`; delete the file to go back to the default)
 - If the request fails, the popup turns red with the reason
 
 While it is running, **any** selected text is sent to Google Translate.
